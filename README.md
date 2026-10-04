@@ -7,7 +7,7 @@ Painel estático e responsivo para acompanhar a totalização oficial das Eleiç
 - Paraná na coluna direita.
 - Governador, Senador, Deputado Federal e Deputado Estadual em cada estado.
 - Busca por nome, partido ou número.
-- Atualização automática a cada 10 segundos.
+- Atualização automática a cada 1 segundo enquanto a aba está visível.
 - Fundo usando `assets/crias-triangulo.webp`.
 - Dados lidos diretamente dos arquivos JSON públicos do TSE.
 
@@ -72,7 +72,7 @@ Exemplos de arquivos lidos:
 /oficial/ele2026/6259/dados/pr/pr-c0005-e006259-u.json
 ```
 
-O painel faz 9 leituras por ciclo de atualização e pausa o polling quando a aba fica em segundo plano.
+O painel faz 9 leituras por ciclo de atualização, com polling de 1 segundo, e pausa as leituras quando a aba fica em segundo plano. Como há proteção contra sobreposição, um novo ciclo não começa enquanto o anterior ainda estiver em andamento.
 
 ## Observação sobre CORS
 
