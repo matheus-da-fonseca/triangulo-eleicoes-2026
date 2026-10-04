@@ -37,7 +37,6 @@
     liveText: document.querySelector('#liveText'),
     tseDataTime: document.querySelector('#tseDataTime'),
     lastRead: document.querySelector('#lastRead'),
-    refreshBtn: document.querySelector('#refreshBtn'),
     presidentFaceoff: document.querySelector('#presidentFaceoff'),
     presidentRanking: document.querySelector('#presidentRanking'),
     presProgressText: document.querySelector('#presProgressText'),
@@ -344,8 +343,8 @@
   }
 
   function resultTimestamp(data) {
-    const dt = String(data?.dt || '').trim();
-    const ht = String(data?.ht || '').trim();
+    const dt = String(data?.dg ?? data?.dt ?? '').trim();
+    const ht = String(data?.hg ?? data?.ht ?? '').trim();
     return [dt, ht].filter(Boolean).join(' • ') || 'horário não informado';
   }
 
@@ -486,7 +485,6 @@
   async function refreshAll({ manual = false } = {}) {
     if (state.refreshing) return;
     state.refreshing = true;
-    els.refreshBtn.disabled = true;
     if (manual) setConnection('', 'atualizando…');
 
     const jobs = [];
@@ -535,12 +533,10 @@
     }
 
     state.refreshing = false;
-    els.refreshBtn.disabled = false;
   }
 
   async function init() {
     mountOfficeCards();
-    els.refreshBtn.addEventListener('click', () => refreshAll({ manual: true }));
     await loadConfig();
     await refreshAll();
     state.timer = setInterval(refreshAll, POLL_MS);
