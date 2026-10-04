@@ -80,6 +80,40 @@
         <div class="skeleton-card faceoff-skeleton"></div>
         <div class="skeleton-card faceoff-skeleton"></div>
       </div>
+
+      <section class="pres-map" aria-labelledby="pres-map-title">
+        <div class="pres-map-head">
+          <div>
+            <p class="kicker">BRASIL POR UF</p>
+            <h3 id="pres-map-title">Mapa da Presidência</h3>
+            <p>Veja quem lidera e o avanço da totalização em cada estado.</p>
+          </div>
+          <div class="map-modes" role="group" aria-label="Modo do mapa">
+            <button class="map-mode active" type="button" data-map-mode="leader">Liderança</button>
+            <button class="map-mode" type="button" data-map-mode="progress">Apuração</button>
+          </div>
+        </div>
+
+        <div class="pres-map-grid">
+          <div class="map-canvas-wrap">
+            <svg id="presidencyMap" class="brazil-map" viewBox="0 0 620 600" role="img" aria-label="Mapa do Brasil com resultados presidenciais por unidade da federação"></svg>
+            <div id="mapTooltip" class="map-tooltip" hidden></div>
+          </div>
+
+          <aside id="mapStateDetail" class="map-state-detail">
+            <span class="map-detail-kicker">TOQUE EM UM ESTADO</span>
+            <strong>Resultado presidencial por UF</strong>
+            <p>O mapa é atualizado automaticamente conforme os arquivos oficiais do TSE mudam.</p>
+          </aside>
+        </div>
+
+        <div id="mapLegend" class="map-legend"></div>
+        <div class="map-foot">
+          <span id="mapStatus">Carregando mapa e resultados por UF…</span>
+          <span>Malha geográfica: IBGE • dados eleitorais: TSE</span>
+        </div>
+      </section>
+
       <div class="president-ranking-wrap">
         <div class="president-ranking-head">
           <span>Demais candidatos</span>

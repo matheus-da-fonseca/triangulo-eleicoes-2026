@@ -6,7 +6,18 @@
   const POLL_MS = 1_000;
   const REQUEST_TIMEOUT_MS = 8_000;
   const DEPLOY_WATCH_MS = 15_000;
+  const MAP_POLL_MS = 2_000;
   const DEFAULT_VISIBLE = 6;
+
+  const MAP_UFS = [
+    'ac','al','ap','am','ba','ce','df','es','go','ma','mt','ms','mg',
+    'pa','pb','pr','pe','pi','rj','rn','rs','ro','rr','sc','sp','se','to'
+  ];
+
+  const MAP_PALETTE = [
+    '#ff54d8','#8b7cff','#46d9ff','#ff9f43','#55e6a5',
+    '#ff6b78','#ffd166','#7ed957','#c778ff','#52b7ff'
+  ];
 
   const FALLBACK = {
     cycle: 'ele2026',
@@ -32,6 +43,13 @@
     ageTimer: null,
     deployTimer: null,
     deploySignature: null,
+    mapTimer: null,
+    mapMode: 'leader',
+    mapGeo: null,
+    mapData: new Map(),
+    mapSignatures: new Map(),
+    nationalCandidates: [],
+    selectedMapUf: null,
     resultSignatures: new Map(),
     offices: new Map()
   };
@@ -43,6 +61,11 @@
     lastRead: document.querySelector('#lastRead'),
     presidentFaceoff: document.querySelector('#presidentFaceoff'),
     presidentRanking: document.querySelector('#presidentRanking'),
+    presidencyMap: document.querySelector('#presidencyMap'),
+    mapTooltip: document.querySelector('#mapTooltip'),
+    mapStateDetail: document.querySelector('#mapStateDetail'),
+    mapLegend: document.querySelector('#mapLegend'),
+    mapStatus: document.querySelector('#mapStatus'),
     presProgressText: document.querySelector('#presProgressText'),
     presSituation: document.querySelector('#presSituation'),
     presProgressBar: document.querySelector('#presProgressBar'),
@@ -188,6 +211,302 @@
       const y = Number(stored);
       if (Number.isFinite(y)) requestAnimationFrame(() => window.scrollTo(0, y));
     } catch (_) {}
+  }
+
+  function candidateKey(c) {
+    return String(c?.sqcand || c?.n || candidateDisplayName(c));
+  }
+
+  function candidateMapColor(c) {
+    const key = candidateKey(c);
+    const index = state.nationalCandidates.findIndex(n => candidateKey(n) === key);
+    if (index >= 0) return MAP_PALETTE[index % MAP_PALETTE.length];
+
+    let hash = 0;
+    for (let i = 0; i < key.length; i += 1) hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0;
+    return MAP_PALETTE[Math.abs(hash) % MAP_PALETTE.length];
+  }
+
+  function geometryPoints(geometry) {
+    if (!geometry) return [];
+    if (geometry.type === 'Polygon') return geometry.coordinates.flat();
+    if (geometry.type === 'MultiPolygon') return geometry.coordinates.flat(2);
+    return [];
+  }
+
+  function geoBounds(features) {
+    const pts = features.flatMap(f => geometryPoints(f.geometry));
+    const xs = pts.map(p => p[0]);
+    const ys = pts.map(p => p[1]);
+    return {
+      minX: Math.min(...xs), maxX: Math.max(...xs),
+      minY: Math.min(...ys), maxY: Math.max(...ys)
+    };
+  }
+
+  function projectPoint(point, bounds, width = 620, height = 600, pad = 24) {
+    const spanX = bounds.maxX - bounds.minX;
+    const spanY = bounds.maxY - bounds.minY;
+    const scale = Math.min((width - pad * 2) / spanX, (height - pad * 2) / spanY);
+    const drawW = spanX * scale;
+    const drawH = spanY * scale;
+    const ox = (width - drawW) / 2;
+    const oy = (height - drawH) / 2;
+    return [
+      ox + (point[0] - bounds.minX) * scale,
+      height - (oy + (point[1] - bounds.minY) * scale)
+    ];
+  }
+
+  function ringPath(ring, bounds) {
+    if (!ring?.length) return '';
+    return ring.map((p, i) => {
+      const [x, y] = projectPoint(p, bounds);
+      return `${i ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ') + ' Z';
+  }
+
+  function geometryPath(geometry, bounds) {
+    if (!geometry) return '';
+    if (geometry.type === 'Polygon') {
+      return geometry.coordinates.map(r => ringPath(r, bounds)).join(' ');
+    }
+    if (geometry.type === 'MultiPolygon') {
+      return geometry.coordinates.flatMap(poly => poly.map(r => ringPath(r, bounds))).join(' ');
+    }
+    return '';
+  }
+
+  function featureCenter(feature, bounds) {
+    const pts = geometryPoints(feature.geometry);
+    if (!pts.length) return [0, 0];
+    const minX = Math.min(...pts.map(p => p[0]));
+    const maxX = Math.max(...pts.map(p => p[0]));
+    const minY = Math.min(...pts.map(p => p[1]));
+    const maxY = Math.max(...pts.map(p => p[1]));
+    return projectPoint([(minX + maxX) / 2, (minY + maxY) / 2], bounds);
+  }
+
+  function statePresidentSummary(data) {
+    const candidates = candidateArray(data).sort(candidateSort);
+    const leader = candidates[0] || null;
+    const second = candidates[1] || null;
+    return {
+      candidates,
+      leader,
+      second,
+      diff: Math.abs(voteNumber(leader?.vap) - voteNumber(second?.vap)),
+      progress: totalizationPercent(data) ?? 0,
+      timestamp: totalizationTimestamp(data)
+    };
+  }
+
+  function progressFill(progress) {
+    const p = Math.max(0, Math.min(100, Number(progress) || 0));
+    const light = 16 + (p / 100) * 48;
+    return `hsl(286 72% ${light.toFixed(1)}%)`;
+  }
+
+  function mapStateFill(uf) {
+    const summary = state.mapData.get(uf);
+    if (!summary) return '#23152c';
+    if (state.mapMode === 'progress') return progressFill(summary.progress);
+    if (!summary.leader || voteNumber(summary.leader?.vap) === 0) return '#2b1b34';
+    return candidateMapColor(summary.leader);
+  }
+
+  function stateMapHtml(uf) {
+    const summary = state.mapData.get(uf);
+    const feature = state.mapGeo?.features?.find(f => String(f.properties?.sigla || '').toLowerCase() === uf);
+    const name = feature?.properties?.nome || uf.toUpperCase();
+
+    if (!summary) {
+      return `<span class="map-detail-kicker">${name.toUpperCase()}</span><strong>Aguardando dados</strong><p>O resultado desta UF ainda não foi carregado.</p>`;
+    }
+
+    const leaderName = summary.leader ? candidateDisplayName(summary.leader) : '—';
+    const secondName = summary.second ? candidateDisplayName(summary.second) : '—';
+    return `
+      <span class="map-detail-kicker">${name.toUpperCase()} • ${uf.toUpperCase()}</span>
+      <strong>${leaderName}</strong>
+      <div class="map-detail-percent">${formatPercent(summary.leader?.pvap)}</div>
+      <div class="map-detail-row"><span>2º colocado</span><b>${secondName} • ${formatPercent(summary.second?.pvap)}</b></div>
+      <div class="map-detail-row"><span>Diferença</span><b>${summary.diff.toLocaleString('pt-BR')} votos</b></div>
+      <div class="map-detail-row"><span>Seções totalizadas</span><b>${formatPercent(summary.progress)}</b></div>
+      <div class="map-detail-row"><span>Última totalização</span><b>${summary.timestamp}</b></div>
+    `;
+  }
+
+  function showMapDetail(uf) {
+    state.selectedMapUf = uf;
+    els.mapStateDetail.innerHTML = stateMapHtml(uf);
+    document.querySelectorAll('.map-state').forEach(path => {
+      path.classList.toggle('selected', path.dataset.uf === uf);
+    });
+  }
+
+  function positionMapTooltip(event, uf) {
+    if (!els.mapTooltip) return;
+    const summary = state.mapData.get(uf);
+    const feature = state.mapGeo?.features?.find(f => String(f.properties?.sigla || '').toLowerCase() === uf);
+    const name = feature?.properties?.nome || uf.toUpperCase();
+    const leader = summary?.leader ? candidateDisplayName(summary.leader) : 'Aguardando dados';
+
+    els.mapTooltip.innerHTML = `<strong>${name}</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)}</b><small>${formatPercent(summary?.progress)} das seções</small>`;
+    els.mapTooltip.hidden = false;
+
+    const wrap = els.mapTooltip.parentElement.getBoundingClientRect();
+    const x = Math.min(wrap.width - 170, Math.max(8, event.clientX - wrap.left + 12));
+    const y = Math.min(wrap.height - 105, Math.max(8, event.clientY - wrap.top + 12));
+    els.mapTooltip.style.left = `${x}px`;
+    els.mapTooltip.style.top = `${y}px`;
+  }
+
+  function renderMapLegend() {
+    if (!els.mapLegend) return;
+
+    if (state.mapMode === 'progress') {
+      els.mapLegend.innerHTML = `
+        <span class="legend-title">Seções totalizadas</span>
+        <span><i style="background:${progressFill(10)}"></i>0–20%</span>
+        <span><i style="background:${progressFill(35)}"></i>20–50%</span>
+        <span><i style="background:${progressFill(65)}"></i>50–80%</span>
+        <span><i style="background:${progressFill(95)}"></i>80–100%</span>
+      `;
+      return;
+    }
+
+    const counts = new Map();
+    state.mapData.forEach(summary => {
+      if (!summary?.leader || voteNumber(summary.leader?.vap) === 0) return;
+      const key = candidateKey(summary.leader);
+      if (!counts.has(key)) counts.set(key, { candidate: summary.leader, count: 0 });
+      counts.get(key).count += 1;
+    });
+
+    const leaders = [...counts.values()].sort((a,b) => b.count - a.count);
+    if (!leaders.length) {
+      els.mapLegend.innerHTML = '<span class="legend-title">Liderança por UF</span><span>Aguardando votos</span>';
+      return;
+    }
+
+    els.mapLegend.replaceChildren();
+    const title = document.createElement('span');
+    title.className = 'legend-title';
+    title.textContent = 'Liderança por UF';
+    els.mapLegend.appendChild(title);
+
+    leaders.forEach(({candidate, count}) => {
+      const item = document.createElement('span');
+      const dot = document.createElement('i');
+      dot.style.background = candidateMapColor(candidate);
+      item.append(dot, document.createTextNode(`${candidateDisplayName(candidate)} • ${count} UF${count === 1 ? '' : 's'}`));
+      els.mapLegend.appendChild(item);
+    });
+  }
+
+  function updateMapVisuals() {
+    document.querySelectorAll('.map-state').forEach(path => {
+      const uf = path.dataset.uf;
+      path.style.fill = mapStateFill(uf);
+      const summary = state.mapData.get(uf);
+      path.style.opacity = summary ? '0.96' : '0.55';
+    });
+
+    document.querySelectorAll('.map-label').forEach(label => {
+      const summary = state.mapData.get(label.dataset.uf);
+      label.style.opacity = summary ? '1' : '.55';
+    });
+
+    renderMapLegend();
+    if (state.selectedMapUf) showMapDetail(state.selectedMapUf);
+  }
+
+  async function initPresidentialMap() {
+    if (!els.presidencyMap) return;
+
+    try {
+      state.mapGeo = await fetchJson('./assets/br-states.geojson');
+      const features = state.mapGeo?.features || [];
+      const bounds = geoBounds(features);
+      els.presidencyMap.replaceChildren();
+
+      features.forEach(feature => {
+        const uf = String(feature.properties?.sigla || '').toLowerCase();
+        if (!uf) return;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', geometryPath(feature.geometry, bounds));
+        path.setAttribute('class', 'map-state');
+        path.setAttribute('tabindex', '0');
+        path.setAttribute('role', 'button');
+        path.setAttribute('aria-label', feature.properties?.nome || uf.toUpperCase());
+        path.dataset.uf = uf;
+
+        path.addEventListener('mouseenter', event => positionMapTooltip(event, uf));
+        path.addEventListener('mousemove', event => positionMapTooltip(event, uf));
+        path.addEventListener('mouseleave', () => { els.mapTooltip.hidden = true; });
+        path.addEventListener('focus', () => showMapDetail(uf));
+        path.addEventListener('click', () => showMapDetail(uf));
+
+        els.presidencyMap.appendChild(path);
+
+        const [cx, cy] = featureCenter(feature, bounds);
+        const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        textEl.setAttribute('x', cx.toFixed(2));
+        textEl.setAttribute('y', cy.toFixed(2));
+        textEl.setAttribute('class', 'map-label');
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('dominant-baseline', 'middle');
+        textEl.dataset.uf = uf;
+        textEl.textContent = uf.toUpperCase();
+        textEl.addEventListener('click', () => showMapDetail(uf));
+        els.presidencyMap.appendChild(textEl);
+      });
+
+      document.querySelectorAll('.map-mode').forEach(button => {
+        button.addEventListener('click', () => {
+          state.mapMode = button.dataset.mapMode || 'leader';
+          document.querySelectorAll('.map-mode').forEach(b => b.classList.toggle('active', b === button));
+          updateMapVisuals();
+        });
+      });
+
+      updateMapVisuals();
+    } catch (err) {
+      console.error('Falha ao inicializar o mapa presidencial.', err);
+      els.mapStatus.textContent = 'Não foi possível carregar a malha do mapa.';
+    }
+  }
+
+  async function refreshPresidentialMap() {
+    if (!state.mapGeo || document.hidden) return;
+
+    const requests = MAP_UFS.map(uf =>
+      fetchJson(resultUrl(uf, 1, state.federalElection))
+        .then(data => ({ uf, data }))
+    );
+
+    const results = await Promise.allSettled(requests);
+    let ok = 0;
+    let changed = false;
+
+    results.forEach(result => {
+      if (result.status !== 'fulfilled') return;
+      ok += 1;
+      const { uf, data } = result.value;
+      const signature = resultSignature(data);
+      if (state.mapSignatures.get(uf) === signature) return;
+
+      state.mapSignatures.set(uf, signature);
+      state.mapData.set(uf, statePresidentSummary(data));
+      changed = true;
+    });
+
+    if (changed) updateMapVisuals();
+
+    const now = new Date();
+    els.mapStatus.textContent = `${ok}/27 UFs consultadas • ${now.toLocaleTimeString('pt-BR')} • atualização a cada 2s`;
   }
 
   async function fetchJson(url) {
@@ -560,6 +879,7 @@
 
   function renderPresident(data) {
     const candidates = candidateArray(data).sort(candidateSort);
+    state.nationalCandidates = candidates;
     renderFaceoff(candidates);
 
     const rest = candidates.slice(2);
@@ -578,6 +898,7 @@
 
     els.tseDataTime.textContent = totalizationTimestamp(data);
     setSituation(els.presSituation, executiveSituation(data));
+    updateMapVisuals();
 
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
@@ -745,12 +1066,14 @@
   async function init() {
     mountOfficeCards();
     await loadConfig();
-    await refreshAll();
+    await initPresidentialMap();
+    await Promise.all([refreshAll(), refreshPresidentialMap()]);
     restoreScrollAfterDeployment();
     await watchDeployment();
     state.timer = setInterval(refreshAll, POLL_MS);
     state.ageTimer = setInterval(updateReadAge, 250);
     state.deployTimer = setInterval(watchDeployment, DEPLOY_WATCH_MS);
+    state.mapTimer = setInterval(refreshPresidentialMap, MAP_POLL_MS);
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
@@ -758,6 +1081,7 @@
         state.timer = null;
       } else {
         refreshAll();
+        refreshPresidentialMap();
         watchDeployment();
         if (!state.timer) state.timer = setInterval(refreshAll, POLL_MS);
       }
