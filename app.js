@@ -326,14 +326,16 @@
     card.className = 'candidate-card';
 
     const vacancies = Number(context?.vacancies || 0);
-    if (vacancies > 0 && rankNumber <= vacancies) {
+    const insideVacancy = vacancies > 0 && rankNumber <= vacancies;
+
+    if (insideVacancy) {
       card.classList.add('rank-in-vacancy');
       card.title = `Dentro das ${vacancies} primeiras posições do ranking nominal atual`;
     }
 
-    if (context?.highlightTop && rankNumber === 1) {
+    if (context?.highlightTop && insideVacancy && rankNumber === 1) {
       card.classList.add('rank-leader');
-    } else if (context?.highlightTop && rankNumber === 2) {
+    } else if (context?.highlightTop && insideVacancy && vacancies >= 2 && rankNumber === 2) {
       card.classList.add('rank-runnerup');
     }
 

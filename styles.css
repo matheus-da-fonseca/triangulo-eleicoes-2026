@@ -260,8 +260,9 @@ a { color: inherit; }
 }
 
 .candidate-card.rank-in-vacancy .rank {
-  background: rgba(183, 92, 255, .22);
-  border-color: rgba(226, 169, 255, .28);
+  color: #180c20;
+  background: linear-gradient(135deg, #f3c9ff, #d992ff);
+  border-color: transparent;
 }
 
 .candidate-card.rank-leader,
@@ -293,8 +294,9 @@ a { color: inherit; }
 }
 
 .candidate-card.rank-runnerup .rank {
-  background: rgba(206,158,255,.22);
-  border-color: rgba(224,190,255,.30);
+  color: #180c20;
+  background: linear-gradient(135deg, #f3c9ff, #d992ff);
+  border-color: transparent;
 }
 
 .candidate-card.rank-leader .candidate-photo {
