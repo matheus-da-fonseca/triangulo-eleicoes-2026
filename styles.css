@@ -140,11 +140,11 @@ a { color: inherit; }
 }
 .hero-sub { max-width: 670px; margin: 0; color: #d6cadb; line-height: 1.6; font-size: 15px; }
 .hero-meta {
-  width: min(360px, 100%);
+  width: min(500px, 100%);
   border-radius: 22px;
   padding: 18px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 .meta-label { display: block; color: var(--muted-2); font-size: 11px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .08em; }
