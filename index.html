@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#12051c" />
+  <meta name="description" content="Painel independente de acompanhamento dos resultados oficiais das Eleições 2026, com dados do TSE." />
+  <title>Triângulo das Bermudas — Eleições 2026</title>
+  <link rel="preconnect" href="https://resultados.tse.jus.br" crossorigin>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="bg" aria-hidden="true"></div>
+  <div class="bg-noise" aria-hidden="true"></div>
+
+  <header class="topbar shell">
+    <a class="brand" href="#top" aria-label="Ir para o início">
+      <span class="brand-mark">△</span>
+      <span>
+        <strong>Triângulo das Bermudas</strong>
+        <small>Eleições 2026</small>
+      </span>
+    </a>
+    <div class="live-chip" id="liveChip" title="Situação da conexão com o TSE">
+      <span class="live-dot"></span>
+      <span id="liveText">conectando ao TSE</span>
+    </div>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">APURAÇÃO OFICIAL • 1º TURNO</p>
+        <h1>A votação dos crias,<br><span>sem sair do rolê.</span></h1>
+        <p class="hero-sub">Painel independente com atualização automática a partir dos arquivos públicos de resultados do TSE.</p>
+      </div>
+      <div class="hero-meta glass">
+        <div>
+          <span class="meta-label">Última leitura</span>
+          <strong id="lastRead">—</strong>
+        </div>
+        <div>
+          <span class="meta-label">Atualização</span>
+          <strong>automática • 10s</strong>
+        </div>
+        <button class="ghost-btn" id="refreshBtn" type="button">Atualizar agora</button>
+      </div>
+    </section>
+
+    <section class="presidency glass section-card" aria-labelledby="pres-title">
+      <div class="section-head">
+        <div>
+          <p class="kicker">BRASIL</p>
+          <h2 id="pres-title">Presidência da República</h2>
+        </div>
+        <div class="progress-wrap" id="presProgressWrap">
+          <div class="progress-meta">
+            <span>Seções totalizadas</span>
+            <strong id="presProgressText">—</strong>
+          </div>
+          <div class="progress-track"><span id="presProgressBar"></span></div>
+        </div>
+      </div>
+      <div id="presidentList" class="candidate-grid president-grid">
+        <div class="skeleton-card"></div><div class="skeleton-card"></div>
+      </div>
+      <div class="section-foot" id="presFoot">Carregando dados oficiais…</div>
+    </section>
+
+    <div class="states-grid">
+      <section class="state-column" aria-labelledby="sc-title">
+        <div class="state-title glass">
+          <div class="state-badge">SC</div>
+          <div>
+            <p class="kicker">SANTA CATARINA</p>
+            <h2 id="sc-title">Os nomes de SC</h2>
+          </div>
+        </div>
+        <div id="scOffices" class="office-stack"></div>
+      </section>
+
+      <section class="state-column" aria-labelledby="pr-title">
+        <div class="state-title glass">
+          <div class="state-badge">PR</div>
+          <div>
+            <p class="kicker">PARANÁ</p>
+            <h2 id="pr-title">Os nomes do Paraná</h2>
+          </div>
+        </div>
+        <div id="prOffices" class="office-stack"></div>
+      </section>
+    </div>
+
+    <section class="info-strip glass">
+      <div>
+        <strong>Fonte: Tribunal Superior Eleitoral</strong>
+        <span>Os números exibidos são lidos dos arquivos JSON oficiais de totalização. Este site não é afiliado ao TSE.</span>
+      </div>
+      <a href="https://resultados.tse.jus.br/" target="_blank" rel="noopener noreferrer">Abrir Resultados TSE ↗</a>
+    </section>
+  </main>
+
+  <footer class="shell footer">
+    <span>△ Triângulo das Bermudas • 2026</span>
+    <span id="footerStatus">Aguardando primeira atualização</span>
+  </footer>
+
+  <template id="officeTemplate">
+    <article class="office-card glass">
+      <div class="office-head">
+        <div>
+          <p class="office-kicker"></p>
+          <h3 class="office-title"></h3>
+        </div>
+        <div class="office-progress"></div>
+      </div>
+      <div class="office-toolbar">
+        <input class="candidate-search" type="search" placeholder="Buscar nome, partido ou número" autocomplete="off" />
+      </div>
+      <div class="office-list"></div>
+      <button class="show-more" type="button"></button>
+      <div class="office-foot"></div>
+    </article>
+  </template>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>
