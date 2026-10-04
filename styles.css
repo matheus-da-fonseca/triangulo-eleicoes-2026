@@ -172,11 +172,76 @@ a { color: inherit; }
 .progress-track > span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--violet), var(--pink)); transition: width .55s ease; }
 
 .candidate-grid { display: grid; gap: 12px; margin-top: 22px; }
-.president-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+
+.president-faceoff {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-top: 24px;
+}
+.faceoff-candidate {
+  position: relative;
+  min-width: 0;
+  min-height: 250px;
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  padding: 20px;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,.11);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,64,230,.12), transparent 46%),
+    rgba(255,255,255,.045);
+}
+.faceoff-candidate.right { flex-direction: row-reverse; text-align: right; }
+.faceoff-candidate::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--violet), var(--pink));
+  opacity: .85;
+}
+.faceoff-photo {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 142px;
+  height: 178px;
+  border-radius: 18px;
+}
+.faceoff-copy { position: relative; z-index: 1; min-width: 0; padding-bottom: 6px; }
+.faceoff-label { display: block; margin-bottom: 8px; color: #d5c4df; font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+.faceoff-name { margin: 0; font-size: clamp(24px, 2.8vw, 42px); line-height: .95; letter-spacing: -.045em; }
+.faceoff-meta { margin-top: 9px; color: var(--muted); font-size: 12px; }
+.faceoff-value { margin-top: 14px; font-size: clamp(28px, 4vw, 50px); font-weight: 900; letter-spacing: -.05em; }
+.faceoff-votes { margin-top: 3px; color: var(--muted); font-size: 12px; }
+.faceoff-vs {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: .12em;
+  background: linear-gradient(135deg, rgba(155,85,255,.85), rgba(255,64,230,.78));
+  border: 1px solid rgba(255,255,255,.26);
+  box-shadow: 0 0 36px rgba(215,64,255,.22);
+}
+.faceoff-skeleton { min-height: 250px; }
+.president-ranking-wrap { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
+.president-ranking-head { display: flex; justify-content: space-between; gap: 12px; color: var(--muted-2); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.president-ranking { grid-template-columns: repeat(2, minmax(0,1fr)); margin-top: 10px; }
 .candidate-card {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0,1fr) auto;
+  grid-template-columns: auto auto minmax(0,1fr) auto;
   align-items: center;
   gap: 14px;
   min-width: 0;
@@ -206,6 +271,36 @@ a { color: inherit; }
   font-size: 12px;
   font-weight: 800;
 }
+.candidate-photo {
+  position: relative;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(155,85,255,.28), rgba(255,64,230,.18));
+  border: 1px solid rgba(255,255,255,.12);
+}
+.candidate-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.candidate-photo-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #eadcff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+.candidate-photo.faceoff-photo { border-radius: 18px; }
+.candidate-photo.faceoff-photo .candidate-photo-fallback { font-size: 24px; }
 .candidate-info { min-width: 0; }
 .candidate-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .candidate-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
@@ -240,9 +335,24 @@ a { color: inherit; }
 }
 .candidate-search::placeholder { color: #756b7b; }
 .candidate-search:focus { border-color: rgba(255,64,230,.36); box-shadow: 0 0 0 3px rgba(255,64,230,.08); }
-.office-list { margin-top: 10px; display: grid; gap: 8px; }
+.office-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  max-height: 430px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(215,135,255,.38) rgba(255,255,255,.04);
+}
+.office-list::-webkit-scrollbar { width: 8px; }
+.office-list::-webkit-scrollbar-track { background: rgba(255,255,255,.035); border-radius: 999px; }
+.office-list::-webkit-scrollbar-thumb { background: rgba(215,135,255,.34); border-radius: 999px; }
+.office-list::-webkit-scrollbar-thumb:hover { background: rgba(215,135,255,.52); }
 .office-list .candidate-card { padding: 12px; border-radius: 14px; gap: 10px; }
 .office-list .rank { width: 31px; height: 31px; border-radius: 10px; }
+.office-list .candidate-photo { width: 42px; height: 42px; border-radius: 12px; }
 .office-list .candidate-value strong { font-size: 16px; }
 .show-more {
   width: 100%;
@@ -271,7 +381,9 @@ a { color: inherit; }
   .section-head { align-items: start; flex-direction: column; }
   .progress-wrap { width: 100%; }
   .states-grid { grid-template-columns: 1fr; }
-  .president-grid { grid-template-columns: 1fr; }
+  .president-faceoff { grid-template-columns: 1fr; }
+  .faceoff-vs { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .president-ranking { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
@@ -288,9 +400,14 @@ a { color: inherit; }
   .hero-meta { grid-template-columns: 1fr; gap: 12px; }
   .ghost-btn { grid-column: auto; }
   .section-card { padding: 17px; border-radius: 20px; }
-  .candidate-card { grid-template-columns: auto minmax(0,1fr); }
-  .candidate-value { grid-column: 2; text-align: left; display: flex; align-items: baseline; gap: 7px; }
+  .candidate-card { grid-template-columns: auto auto minmax(0,1fr); }
+  .candidate-value { grid-column: 3; text-align: left; display: flex; align-items: baseline; gap: 7px; }
   .candidate-value strong { font-size: 17px; }
+  .candidate-photo { width: 44px; height: 44px; border-radius: 12px; }
+  .faceoff-candidate, .faceoff-candidate.right { min-height: 210px; padding: 15px; gap: 13px; }
+  .faceoff-photo { width: 105px; height: 138px; }
+  .faceoff-name { font-size: clamp(23px, 8vw, 34px); }
+  .faceoff-value { font-size: 32px; }
   .state-title { padding: 15px 16px; }
   .state-title h2 { font-size: 22px; }
   .office-card { padding: 15px; }
