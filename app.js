@@ -57,7 +57,10 @@
   }
 
   function formatVotes(value) {
-    const n = Number(String(value ?? '').replace(/\D/g, ''));
+    if (value === null || value === undefined || value === '') return '—';
+    const digits = String(value).replace(/\D/g, '');
+    if (!digits) return '—';
+    const n = Number(digits);
     return Number.isFinite(n) ? n.toLocaleString('pt-BR') : '—';
   }
 
@@ -121,7 +124,44 @@
   }
 
   function candidateArray(data) {
-    return Array.isArray(data?.cand) ? data.cand : [];
+    // EA20 (2026): os candidatos não ficam na raiz.
+    // Estrutura oficial: carg[] -> agr[] -> par[] -> cand[].
+    // Mantemos também o fallback para um eventual formato simplificado.
+    if (Array.isArray(data?.cand)) return data.cand;
+
+    const out = [];
+    const cargos = Array.isArray(data?.carg) ? data.carg : [];
+
+    for (const cargo of cargos) {
+      const agregacoes = Array.isArray(cargo?.agr) ? cargo.agr : [];
+
+      for (const agr of agregacoes) {
+        const partidos = Array.isArray(agr?.par) ? agr.par : [];
+
+        for (const partido of partidos) {
+          const candidatos = Array.isArray(partido?.cand) ? partido.cand : [];
+
+          for (const candidato of candidatos) {
+            out.push({
+              ...candidato,
+              _cargoCode: cargo?.cd,
+              _cargoName: cargo?.nmn || cargo?.nmm || cargo?.nmf || '',
+              _partySigla: partido?.sg || '',
+              _partyName: partido?.nm || '',
+              _partyNumber: partido?.n || '',
+              _groupName: agr?.nm || '',
+              _groupType: agr?.tp || ''
+            });
+          }
+        }
+      }
+    }
+
+    return out;
+  }
+
+  function totalizationPercent(data) {
+    return normalizePercent(data?.s?.pst ?? data?.pst);
   }
 
   function candidateSort(a, b) {
@@ -136,8 +176,10 @@
   }
 
   function partyLabel(c) {
-    const raw = String(c?.cc || '').trim();
-    return raw || 'Partido não informado';
+    const sigla = String(c?._partySigla || '').trim();
+    const nome = String(c?._partyName || '').trim();
+    if (sigla && nome) return `${sigla} • ${nome}`;
+    return sigla || nome || 'Partido não informado';
   }
 
   function candidateCard(c, index) {
@@ -153,7 +195,7 @@
     const name = document.createElement('div');
     name.className = 'candidate-name';
     const strong = document.createElement('strong');
-    strong.textContent = c?.nm || 'Nome não informado';
+    strong.textContent = c?.nmu || c?.nm || 'Nome não informado';
     name.appendChild(strong);
     if (isElected(c)) {
       const badge = document.createElement('span');
@@ -203,7 +245,7 @@
     const candidates = candidateArray(data);
     renderCandidates(els.presidentList, candidates, Infinity);
 
-    const progress = normalizePercent(data?.pst);
+    const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
     els.presProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
     els.presFoot.textContent = `Arquivo do TSE atualizado em ${resultTimestamp(data)} • ${candidates.length} candidatura(s) no resultado.`;
@@ -253,8 +295,14 @@
     let candidates = candidateArray(entry.data).sort(candidateSort);
 
     if (query) {
-      candidates = candidates.filter(c => [c?.nm, c?.cc, c?.n]
-        .some(v => String(v ?? '').toLocaleLowerCase('pt-BR').includes(query)));
+      candidates = candidates.filter(c => [
+        c?.nmu,
+        c?.nm,
+        c?._partySigla,
+        c?._partyName,
+        c?._groupName,
+        c?.n
+      ].some(v => String(v ?? '').toLocaleLowerCase('pt-BR').includes(query)));
     }
 
     const showAll = entry.expanded || !!query;
@@ -277,7 +325,7 @@
 
     const card = document.querySelector(`[data-office-id="${CSS.escape(id)}"]`);
     if (!card) return;
-    const progress = normalizePercent(data?.pst);
+    const progress = totalizationPercent(data);
     card.querySelector('.office-progress').textContent = `${formatPercent(progress)} das seções`;
     card.querySelector('.office-foot').textContent = `TSE: ${resultTimestamp(data)} • ${candidateArray(data).length} candidatura(s).`;
     renderOfficeFromState(id);
