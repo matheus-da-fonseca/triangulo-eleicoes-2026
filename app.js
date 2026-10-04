@@ -366,7 +366,11 @@
     const name = feature?.properties?.nome || uf.toUpperCase();
     const leader = summary?.leader ? candidateDisplayName(summary.leader) : 'Aguardando dados';
 
-    els.mapTooltip.innerHTML = `<strong>${name}</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)}</b><small>${formatPercent(summary?.progress)} das seções</small>`;
+    if (state.mapMode === 'progress') {
+      els.mapTooltip.innerHTML = `<strong>${name}</strong><span>Seções totalizadas</span><b>${formatPercent(summary?.progress)}</b><small>${leader} lidera com ${formatPercent(summary?.leader?.pvap)}</small>`;
+    } else {
+      els.mapTooltip.innerHTML = `<strong>${name}</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)} dos votos</b><small>Apuração: ${formatPercent(summary?.progress)} das seções</small>`;
+    }
     els.mapTooltip.hidden = false;
 
     const wrap = els.mapTooltip.parentElement.getBoundingClientRect();
@@ -407,7 +411,7 @@
     els.mapLegend.replaceChildren();
     const title = document.createElement('span');
     title.className = 'legend-title';
-    title.textContent = 'Liderança por UF';
+    title.textContent = 'Cor = candidato que lidera na UF';
     els.mapLegend.appendChild(title);
 
     leaders.forEach(({candidate, count}) => {
@@ -432,7 +436,13 @@
       label.style.opacity = summary ? '1' : '.55';
 
       const pct = label.querySelector('.map-label-progress');
-      if (pct) pct.textContent = summary ? `${Math.round(summary.progress)}%` : '—';
+      if (pct) {
+        const showProgress = state.mapMode === 'progress';
+        pct.textContent = showProgress
+          ? (summary ? `${Math.round(summary.progress)}%` : '—')
+          : '';
+        pct.classList.toggle('hidden-value', !showProgress);
+      }
     });
 
     renderMapLegend();
