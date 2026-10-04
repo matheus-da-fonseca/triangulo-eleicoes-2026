@@ -248,10 +248,11 @@ a { color: inherit; }
 .faceoff-label { display: block; margin-bottom: 8px; color: #d5c4df; font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
 .faceoff-name { margin: 0; font-size: clamp(24px, 2.8vw, 42px); line-height: .95; letter-spacing: -.045em; }
 .faceoff-vice {
-  margin-top: 7px;
-  color: #eadcf0;
-  font-size: 11px;
-  font-weight: 700;
+  margin-top: 6px;
+  color: var(--muted-2);
+  font-size: 10px;
+  font-weight: 600;
+  opacity: .72;
 }
 .faceoff-meta { margin-top: 5px; color: var(--muted); font-size: 12px; }
 .faceoff-value { margin-top: 14px; font-size: clamp(28px, 4vw, 50px); font-weight: 900; letter-spacing: -.05em; }
@@ -684,9 +685,10 @@ a { color: inherit; }
 .candidate-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .candidate-vice {
   margin-top: 3px;
-  color: #d9c9e1;
-  font-size: 10px;
-  font-weight: 700;
+  color: var(--muted-2);
+  font-size: 9px;
+  font-weight: 600;
+  opacity: .68;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -832,12 +834,15 @@ a { color: inherit; }
     width: 100%;
     max-width: 500px;
   }
+  .map-label {
+    stroke-width: 3px;
+  }
   .map-label-uf {
-    font-size: 16px;
+    font-size: 24px;
     font-weight: 950;
   }
   .map-label-progress {
-    font-size: 12px;
+    font-size: 17px;
     font-weight: 900;
   }
   .map-national-progress-copy span { font-size: 11px; }
@@ -862,8 +867,8 @@ a { color: inherit; }
   .faceoff-gap strong { font-size: 14px; }
   .candidate-photo.faceoff-photo { width: 105px; height: 138px; }
   .faceoff-name { font-size: clamp(23px, 8vw, 34px); }
-  .faceoff-vice { font-size: 11px; }
-  .candidate-vice { font-size: 10px; }
+  .faceoff-vice { font-size: 10px; opacity: .70; }
+  .candidate-vice { font-size: 9px; opacity: .66; }
   .faceoff-value { font-size: 32px; }
   .state-title { padding: 15px 16px; }
   .state-title h2 { font-size: 22px; }
@@ -895,4 +900,10 @@ a { color: inherit; }
   font-size: 9px;
   font-weight: 900;
   fill: rgba(255,255,255,.90);
+}
+
+
+@media (max-width: 390px) {
+  .map-label-uf { font-size: 21px; }
+  .map-label-progress { font-size: 15px; }
 }
