@@ -217,7 +217,19 @@
     return String(c?.sqcand || c?.n || candidateDisplayName(c));
   }
 
+  function normalizedCandidateName(c) {
+    return candidateDisplayName(c)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase();
+  }
+
   function candidateMapColor(c) {
+    const name = normalizedCandidateName(c);
+
+    if (name.includes('FLAVIO BOLSONARO')) return '#103B73';
+    if (name === 'LULA' || name.includes('LUIZ INACIO LULA')) return '#D62828';
+
     const key = candidateKey(c);
     const index = state.nationalCandidates.findIndex(n => candidateKey(n) === key);
     if (index >= 0) return MAP_PALETTE[index % MAP_PALETTE.length];
