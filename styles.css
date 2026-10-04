@@ -247,7 +247,13 @@ a { color: inherit; }
 .faceoff-copy { position: relative; z-index: 1; min-width: 0; padding-bottom: 6px; }
 .faceoff-label { display: block; margin-bottom: 8px; color: #d5c4df; font-size: 10px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
 .faceoff-name { margin: 0; font-size: clamp(24px, 2.8vw, 42px); line-height: .95; letter-spacing: -.045em; }
-.faceoff-meta { margin-top: 9px; color: var(--muted); font-size: 12px; }
+.faceoff-vice {
+  margin-top: 7px;
+  color: #eadcf0;
+  font-size: 11px;
+  font-weight: 700;
+}
+.faceoff-meta { margin-top: 5px; color: var(--muted); font-size: 12px; }
 .faceoff-value { margin-top: 14px; font-size: clamp(28px, 4vw, 50px); font-weight: 900; letter-spacing: -.05em; }
 .faceoff-votes { margin-top: 3px; color: var(--muted); font-size: 12px; }
 .faceoff-center {
@@ -493,6 +499,17 @@ a { color: inherit; }
   font-weight: 900;
   letter-spacing: -.05em;
 }
+.map-detail-historical {
+  display: inline-flex;
+  margin: 10px 0 14px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.09);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
 .map-detail-row {
   display: flex;
   justify-content: space-between;
@@ -665,7 +682,16 @@ a { color: inherit; }
 .candidate-info { min-width: 0; }
 .candidate-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .candidate-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.candidate-meta { margin-top: 4px; color: var(--muted-2); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.candidate-vice {
+  margin-top: 3px;
+  color: #d9c9e1;
+  font-size: 10px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.candidate-meta { margin-top: 3px; color: var(--muted-2); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .candidate-value { text-align: right; }
 .candidate-value strong { display: block; font-size: 20px; letter-spacing: -.03em; }
 .candidate-value span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
@@ -798,9 +824,22 @@ a { color: inherit; }
   .map-year,
   .map-mode { flex: 1; }
   .pres-map-grid { gap: 12px; }
-  .map-canvas-wrap { min-height: 300px; }
-  .map-label-uf { font-size: 9px; }
-  .map-label-progress { font-size: 7.8px; }
+  .map-canvas-wrap {
+    min-height: 340px;
+    overflow: visible;
+  }
+  .brazil-map {
+    width: 100%;
+    max-width: 500px;
+  }
+  .map-label-uf {
+    font-size: 16px;
+    font-weight: 950;
+  }
+  .map-label-progress {
+    font-size: 12px;
+    font-weight: 900;
+  }
   .map-national-progress-copy span { font-size: 11px; }
   .map-national-progress-copy strong { font-size: 17px; }
   .map-state-detail { min-height: 0; }
@@ -823,6 +862,8 @@ a { color: inherit; }
   .faceoff-gap strong { font-size: 14px; }
   .candidate-photo.faceoff-photo { width: 105px; height: 138px; }
   .faceoff-name { font-size: clamp(23px, 8vw, 34px); }
+  .faceoff-vice { font-size: 11px; }
+  .candidate-vice { font-size: 10px; }
   .faceoff-value { font-size: 32px; }
   .state-title { padding: 15px 16px; }
   .state-title h2 { font-size: 22px; }
@@ -842,4 +883,16 @@ a { color: inherit; }
 
 .map-label-progress.hidden-value {
   display: none;
+}
+
+
+.map-label-uf {
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .01em;
+}
+.map-label-progress {
+  font-size: 9px;
+  font-weight: 900;
+  fill: rgba(255,255,255,.90);
 }
