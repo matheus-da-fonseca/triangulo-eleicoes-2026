@@ -248,12 +248,28 @@ a { color: inherit; }
   opacity: .55;
 }
 
+.candidate-card.rank-in-vacancy {
+  border-color: rgba(226, 126, 255, .30);
+  background:
+    linear-gradient(90deg, rgba(155,85,255,.12), rgba(255,64,230,.045)),
+    rgba(255,255,255,.048);
+}
+
+.candidate-card.rank-in-vacancy::before {
+  opacity: .86;
+}
+
+.candidate-card.rank-in-vacancy .rank {
+  background: rgba(183, 92, 255, .22);
+  border-color: rgba(226, 169, 255, .28);
+}
+
 .candidate-card.rank-leader,
 .candidate-card.rank-runnerup {
-  border-color: rgba(230, 174, 255, .22);
+  border-color: rgba(230, 174, 255, .34);
   background:
-    linear-gradient(90deg, rgba(155,85,255,.13), rgba(255,64,230,.055)),
-    rgba(255,255,255,.055);
+    linear-gradient(90deg, rgba(155,85,255,.18), rgba(255,64,230,.075)),
+    rgba(255,255,255,.06);
 }
 
 .candidate-card.rank-leader {

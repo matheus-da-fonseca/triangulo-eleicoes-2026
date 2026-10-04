@@ -325,6 +325,12 @@
     const card = document.createElement('div');
     card.className = 'candidate-card';
 
+    const vacancies = Number(context?.vacancies || 0);
+    if (vacancies > 0 && rankNumber <= vacancies) {
+      card.classList.add('rank-in-vacancy');
+      card.title = `Dentro das ${vacancies} primeiras posições do ranking nominal atual`;
+    }
+
     if (context?.highlightTop && rankNumber === 1) {
       card.classList.add('rank-leader');
     } else if (context?.highlightTop && rankNumber === 2) {
@@ -567,7 +573,8 @@
       {
         uf: entry.uf,
         electionCode: state.stateElection,
-        highlightTop: true
+        highlightTop: true,
+        vacancies: Number(entry.office?.vacancies?.[entry.uf] || 0)
       },
       1
     );
@@ -578,14 +585,14 @@
   function renderOffice(uf, office, data) {
     const id = officeId(uf, office);
     const previous = state.offices.get(id);
-    state.offices.set(id, { data, uf, expanded: previous?.expanded || false });
+    state.offices.set(id, { data, uf, office, expanded: previous?.expanded || false });
 
     const card = document.querySelector(`[data-office-id="${CSS.escape(id)}"]`);
     if (!card) return;
     const progress = totalizationPercent(data);
     card.querySelector('.office-progress').textContent = `${formatPercent(progress)} das seções`;
     const vacancies = Number(office.vacancies?.[uf] || 0);
-    card.querySelector('.office-foot').textContent = `Totalização TSE: ${totalizationTimestamp(data)} • ${vacancies} vaga(s) • ${candidateArray(data).length} candidatura(s).`;
+    card.querySelector('.office-foot').textContent = `Totalização TSE: ${totalizationTimestamp(data)} • faixa colorida: top ${vacancies} do ranking nominal • ${candidateArray(data).length} candidatura(s).`;
     renderOfficeFromState(id);
   }
 
