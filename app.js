@@ -3,7 +3,7 @@
 
   const TSE_BASE = 'https://resultados.tse.jus.br/oficial';
   const CONFIG_URL = `${TSE_BASE}/comum/config/ele-c.json`;
-  const POLL_MS = 10_000;
+  const POLL_MS = 1_000;
   const REQUEST_TIMEOUT_MS = 8_000;
   const DEFAULT_VISIBLE = 6;
 
@@ -225,6 +225,12 @@
     const card = document.createElement('div');
     card.className = 'candidate-card';
 
+    if (context?.highlightTop && rankNumber === 1) {
+      card.classList.add('rank-leader');
+    } else if (context?.highlightTop && rankNumber === 2) {
+      card.classList.add('rank-runnerup');
+    }
+
     const rank = document.createElement('div');
     rank.className = 'rank';
     rank.textContent = `${rankNumber}º`;
@@ -272,7 +278,10 @@
       container.appendChild(empty);
       return;
     }
-    sorted.forEach((c, index) => container.appendChild(candidateCard(c, startRank + index, context)));
+    sorted.forEach((c, index) => {
+      const rankNumber = Number(c?._rank) || (startRank + index);
+      container.appendChild(candidateCard(c, rankNumber, context));
+    });
   }
 
   function faceoffCandidate(c, context, position) {
@@ -397,7 +406,11 @@
     const list = card.querySelector('.office-list');
     const more = card.querySelector('.show-more');
     const query = input.value.trim().toLocaleLowerCase('pt-BR');
-    let candidates = candidateArray(entry.data).sort(candidateSort);
+    const rankedCandidates = candidateArray(entry.data)
+      .sort(candidateSort)
+      .map((c, index) => ({ ...c, _rank: index + 1 }));
+
+    let candidates = rankedCandidates;
 
     if (query) {
       candidates = candidates.filter(c => [
@@ -413,7 +426,11 @@
     renderCandidates(
       list,
       candidates,
-      { uf: entry.uf, electionCode: state.stateElection },
+      {
+        uf: entry.uf,
+        electionCode: state.stateElection,
+        highlightTop: true
+      },
       1
     );
 
