@@ -27,12 +27,15 @@
     refreshing: false,
     timer: null,
     firstSuccess: false,
+    lastPollAt: null,
+    ageTimer: null,
     offices: new Map()
   };
 
   const els = {
     liveChip: document.querySelector('#liveChip'),
     liveText: document.querySelector('#liveText'),
+    tseDataTime: document.querySelector('#tseDataTime'),
     lastRead: document.querySelector('#lastRead'),
     refreshBtn: document.querySelector('#refreshBtn'),
     presidentFaceoff: document.querySelector('#presidentFaceoff'),
@@ -346,6 +349,24 @@
     return [dt, ht].filter(Boolean).join(' • ') || 'horário não informado';
   }
 
+  function updateReadAge() {
+    if (!state.lastPollAt) {
+      els.lastRead.textContent = 'aguardando';
+      return;
+    }
+
+    const elapsedMs = Math.max(0, Date.now() - state.lastPollAt);
+    if (elapsedMs < 1000) {
+      els.lastRead.textContent = 'agora';
+      return;
+    }
+
+    const seconds = Math.floor(elapsedMs / 1000);
+    els.lastRead.textContent = seconds < 60
+      ? `${seconds}s atrás`
+      : `${Math.floor(seconds / 60)}min atrás`;
+  }
+
   function renderPresident(data) {
     const candidates = candidateArray(data).sort(candidateSort);
     renderFaceoff(candidates);
@@ -363,6 +384,8 @@
       els.presidentRanking.replaceChildren();
       els.presidentRanking.parentElement.hidden = true;
     }
+
+    els.tseDataTime.textContent = resultTimestamp(data);
 
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
@@ -500,8 +523,9 @@
     });
 
     const now = new Date();
-    els.lastRead.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    els.footerStatus.textContent = `${successes}/9 arquivos lidos • ${now.toLocaleTimeString('pt-BR')}`;
+    state.lastPollAt = now.getTime();
+    updateReadAge();
+    els.footerStatus.textContent = `${successes}/9 arquivos lidos • consulta ${now.toLocaleTimeString('pt-BR')}`;
 
     if (successes > 0) {
       state.firstSuccess = true;
@@ -520,6 +544,7 @@
     await loadConfig();
     await refreshAll();
     state.timer = setInterval(refreshAll, POLL_MS);
+    state.ageTimer = setInterval(updateReadAge, 250);
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
