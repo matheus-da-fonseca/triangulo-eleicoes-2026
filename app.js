@@ -66,6 +66,8 @@
     mapStateDetail: document.querySelector('#mapStateDetail'),
     mapLegend: document.querySelector('#mapLegend'),
     mapStatus: document.querySelector('#mapStatus'),
+    mapNationalProgressText: document.querySelector('#mapNationalProgressText'),
+    mapNationalProgressBar: document.querySelector('#mapNationalProgressBar'),
     presProgressText: document.querySelector('#presProgressText'),
     presSituation: document.querySelector('#presSituation'),
     presProgressBar: document.querySelector('#presProgressBar'),
@@ -428,6 +430,9 @@
     document.querySelectorAll('.map-label').forEach(label => {
       const summary = state.mapData.get(label.dataset.uf);
       label.style.opacity = summary ? '1' : '.55';
+
+      const pct = label.querySelector('.map-label-progress');
+      if (pct) pct.textContent = summary ? `${Math.round(summary.progress)}%` : '—';
     });
 
     renderMapLegend();
@@ -466,12 +471,23 @@
         const [cx, cy] = featureCenter(feature, bounds);
         const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         textEl.setAttribute('x', cx.toFixed(2));
-        textEl.setAttribute('y', cy.toFixed(2));
+        textEl.setAttribute('y', (cy - 4).toFixed(2));
         textEl.setAttribute('class', 'map-label');
         textEl.setAttribute('text-anchor', 'middle');
-        textEl.setAttribute('dominant-baseline', 'middle');
         textEl.dataset.uf = uf;
-        textEl.textContent = uf.toUpperCase();
+
+        const ufLine = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        ufLine.setAttribute('x', cx.toFixed(2));
+        ufLine.setAttribute('class', 'map-label-uf');
+        ufLine.textContent = uf.toUpperCase();
+
+        const pctLine = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+        pctLine.setAttribute('x', cx.toFixed(2));
+        pctLine.setAttribute('dy', '11');
+        pctLine.setAttribute('class', 'map-label-progress');
+        pctLine.textContent = '—';
+
+        textEl.append(ufLine, pctLine);
         textEl.addEventListener('click', () => showMapDetail(uf));
         els.presidencyMap.appendChild(textEl);
       });
@@ -915,6 +931,13 @@
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
     els.presProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
+
+    if (els.mapNationalProgressText) {
+      els.mapNationalProgressText.textContent = formatPercent(progress);
+    }
+    if (els.mapNationalProgressBar) {
+      els.mapNationalProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
+    }
     els.presFoot.textContent = `Totalização TSE: ${totalizationTimestamp(data)} • arquivo gerado em ${generationTimestamp(data)} • ${candidates.length} candidatura(s) no resultado.`;
   }
 
