@@ -63,12 +63,17 @@
     return n === null ? '—' : `${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
   }
 
+  function voteNumber(value) {
+    if (value === null || value === undefined || value === '') return 0;
+    const digits = String(value).replace(/\D/g, '');
+    const n = Number(digits);
+    return Number.isFinite(n) ? n : 0;
+  }
+
   function formatVotes(value) {
     if (value === null || value === undefined || value === '') return '—';
-    const digits = String(value).replace(/\D/g, '');
-    if (!digits) return '—';
-    const n = Number(digits);
-    return Number.isFinite(n) ? n.toLocaleString('pt-BR') : '—';
+    const n = voteNumber(value);
+    return n.toLocaleString('pt-BR');
   }
 
   function padElection(code) {
@@ -441,10 +446,20 @@
     els.presidentFaceoff.appendChild(faceoffCandidate(sorted[0], context, 'left'));
 
     if (sorted[1]) {
+      const center = document.createElement('div');
+      center.className = 'faceoff-center';
+
       const vs = document.createElement('div');
       vs.className = 'faceoff-vs';
       vs.textContent = 'VS';
-      els.presidentFaceoff.append(vs, faceoffCandidate(sorted[1], context, 'right'));
+
+      const gap = document.createElement('div');
+      gap.className = 'faceoff-gap';
+      const diff = Math.abs(voteNumber(sorted[0]?.vap) - voteNumber(sorted[1]?.vap));
+      gap.innerHTML = `<span>diferença</span><strong>${diff.toLocaleString('pt-BR')}</strong><small>votos</small>`;
+
+      center.append(vs, gap);
+      els.presidentFaceoff.append(center, faceoffCandidate(sorted[1], context, 'right'));
     }
   }
 

@@ -207,8 +207,14 @@ a { color: inherit; }
 .faceoff-meta { margin-top: 9px; color: var(--muted); font-size: 12px; }
 .faceoff-value { margin-top: 14px; font-size: clamp(28px, 4vw, 50px); font-weight: 900; letter-spacing: -.05em; }
 .faceoff-votes { margin-top: 3px; color: var(--muted); font-size: 12px; }
-.faceoff-vs {
+.faceoff-center {
   align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  min-width: 92px;
+}
+.faceoff-vs {
   display: grid;
   place-items: center;
   width: 54px;
@@ -221,6 +227,26 @@ a { color: inherit; }
   background: linear-gradient(135deg, rgba(155,85,255,.85), rgba(255,64,230,.78));
   border: 1px solid rgba(255,255,255,.26);
   box-shadow: 0 0 36px rgba(215,64,255,.22);
+}
+.faceoff-gap {
+  display: grid;
+  justify-items: center;
+  line-height: 1.05;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.faceoff-gap span,
+.faceoff-gap small {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .10em;
+}
+.faceoff-gap strong {
+  margin: 3px 0 2px;
+  color: var(--text);
+  font-size: 16px;
+  letter-spacing: -.03em;
 }
 .faceoff-skeleton { min-height: 250px; }
 .president-ranking-wrap { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
@@ -446,14 +472,12 @@ a { color: inherit; }
     grid-template-columns: 1fr;
     gap: 0;
   }
-  .faceoff-vs {
+  .faceoff-center {
     position: relative;
     z-index: 4;
-    left: auto;
-    top: auto;
-    transform: none;
     justify-self: center;
     margin: -10px 0;
+    gap: 4px;
   }
   .faceoff-candidate.right {
     padding-top: 28px;
@@ -480,7 +504,9 @@ a { color: inherit; }
   .candidate-photo { width: 44px; height: 44px; border-radius: 12px; }
   .faceoff-candidate, .faceoff-candidate.right { min-height: 210px; padding: 15px; gap: 13px; }
   .faceoff-candidate.right { padding-top: 30px; }
-  .faceoff-vs { width: 48px; height: 48px; margin: -8px 0; }
+  .faceoff-center { margin: -8px 0; }
+  .faceoff-vs { width: 48px; height: 48px; }
+  .faceoff-gap strong { font-size: 14px; }
   .candidate-photo.faceoff-photo { width: 105px; height: 138px; }
   .faceoff-name { font-size: clamp(23px, 8vw, 34px); }
   .faceoff-value { font-size: 32px; }
