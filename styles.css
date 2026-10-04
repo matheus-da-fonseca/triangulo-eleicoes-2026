@@ -237,7 +237,7 @@ a { color: inherit; }
 .faceoff-skeleton { min-height: 250px; }
 .president-ranking-wrap { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
 .president-ranking-head { display: flex; justify-content: space-between; gap: 12px; color: var(--muted-2); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.president-ranking { grid-template-columns: repeat(2, minmax(0,1fr)); margin-top: 10px; }
+.president-ranking { grid-template-columns: 1fr; margin-top: 10px; }
 .candidate-card {
   position: relative;
   display: grid;
@@ -258,6 +258,57 @@ a { color: inherit; }
   height: 2px;
   background: linear-gradient(90deg, var(--violet), var(--pink));
   opacity: .55;
+}
+
+.candidate-card.rank-leader,
+.candidate-card.rank-runnerup {
+  border-color: rgba(230, 174, 255, .22);
+  background:
+    linear-gradient(90deg, rgba(155,85,255,.13), rgba(255,64,230,.055)),
+    rgba(255,255,255,.055);
+}
+
+.candidate-card.rank-leader {
+  padding-block: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.025), 0 10px 28px rgba(0,0,0,.12);
+}
+
+.candidate-card.rank-leader::before {
+  height: 3px;
+  opacity: .95;
+}
+
+.candidate-card.rank-runnerup::before {
+  opacity: .72;
+}
+
+.candidate-card.rank-leader .rank {
+  color: #180c20;
+  background: linear-gradient(135deg, #f3c9ff, #d992ff);
+  border-color: transparent;
+}
+
+.candidate-card.rank-runnerup .rank {
+  background: rgba(206,158,255,.22);
+  border-color: rgba(224,190,255,.30);
+}
+
+.candidate-card.rank-leader .candidate-photo {
+  width: 54px;
+  height: 54px;
+}
+
+.candidate-card.rank-runnerup .candidate-photo {
+  width: 48px;
+  height: 48px;
+}
+
+.candidate-card.rank-leader .candidate-name strong {
+  font-size: 16px;
+}
+
+.candidate-card.rank-leader .candidate-value strong {
+  font-size: 19px;
 }
 .rank {
   display: grid;
