@@ -37,7 +37,7 @@ a { color: inherit; }
   background:
     linear-gradient(180deg, rgba(10,3,17,.28) 0%, rgba(10,3,17,.62) 36%, rgba(10,3,17,.96) 88%),
     linear-gradient(90deg, rgba(77, 16, 116, .35), rgba(250, 0, 255, .10), rgba(13, 0, 26, .58)),
-    url('./assets/crias-triangulo.jpg') center 8% / min(860px, 96vw) auto no-repeat,
+    url('./assets/crias-triangulo.webp') center 8% / min(860px, 96vw) auto no-repeat,
     #0b0710;
 }
 .bg::after {
