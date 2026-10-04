@@ -364,7 +364,10 @@
       second,
       diff: Math.abs(voteNumber(leader?.vap) - voteNumber(second?.vap)),
       progress: totalizationPercent(data) ?? 0,
-      timestamp: totalizationTimestamp(data)
+      timestamp: totalizationTimestamp(data),
+      totalElectors: data?.e?.te,
+      remainingElectors: data?.e?.esnt,
+      countedVotes: data?.v?.tv
     };
   }
 
@@ -515,6 +518,20 @@
       <div class="map-detail-percent">${formatPercent(summary.leader?.pvap)}</div>
       <div class="map-detail-row"><span>2º colocado</span><b>${secondName} • ${formatPercent(summary.second?.pvap)}</b></div>
       <div class="map-detail-row"><span>Diferença</span><b>${summary.diff.toLocaleString('pt-BR')} votos</b></div>
+      <div class="map-detail-stats">
+        <div>
+          <span>Eleitorado da UF</span>
+          <strong>${summary.totalElectors == null ? '—' : formatVotes(summary.totalElectors)}</strong>
+        </div>
+        <div>
+          <span>Ainda não totalizados</span>
+          <strong>${summary.remainingElectors == null ? '—' : formatVotes(summary.remainingElectors)}</strong>
+        </div>
+        <div>
+          <span>Votos contabilizados</span>
+          <strong>${summary.countedVotes == null ? '—' : formatVotes(summary.countedVotes)}</strong>
+        </div>
+      </div>
       <div class="map-detail-row"><span>Seções totalizadas</span><b>${formatPercent(summary.progress)}</b></div>
       <div class="map-detail-row"><span>Última totalização</span><b>${summary.timestamp}</b></div>
     `;
@@ -538,9 +555,9 @@
     if (state.mapYear === '2022') {
       els.mapTooltip.innerHTML = `<strong>${name} • 2022</strong><span>Vencedor na UF</span><b>${leader}</b><small>Mapa final do 2º turno</small>`;
     } else if (state.mapMode === 'progress') {
-      els.mapTooltip.innerHTML = `<strong>${name}</strong><span>Seções totalizadas</span><b>${formatPercent(summary?.progress)}</b><small>${leader} lidera com ${formatPercent(summary?.leader?.pvap)}</small>`;
+      els.mapTooltip.innerHTML = `<strong>${name}</strong><span>Seções totalizadas</span><b>${formatPercent(summary?.progress)}</b><small>Eleitorado: ${summary?.totalElectors == null ? '—' : formatVotes(summary.totalElectors)} • ${leader} lidera com ${formatPercent(summary?.leader?.pvap)}</small>`;
     } else {
-      els.mapTooltip.innerHTML = `<strong>${name}</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)} dos votos</b><small>Apuração: ${formatPercent(summary?.progress)} das seções</small>`;
+      els.mapTooltip.innerHTML = `<strong>${name}</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)} dos votos</b><small>Eleitorado: ${summary?.totalElectors == null ? '—' : formatVotes(summary.totalElectors)} • apuração: ${formatPercent(summary?.progress)}</small>`;
     }
     els.mapTooltip.hidden = false;
 
