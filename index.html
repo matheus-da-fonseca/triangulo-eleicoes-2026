@@ -88,15 +88,21 @@
             <h3 id="pres-map-title">Mapa da Presidência</h3>
             <p>Veja quem lidera e o avanço da totalização em cada estado.</p>
           </div>
-          <div class="map-modes" role="group" aria-label="Modo do mapa">
-            <button class="map-mode active" type="button" data-map-mode="leader">Liderança</button>
-            <button class="map-mode" type="button" data-map-mode="progress">Apuração</button>
+          <div class="map-controls">
+            <div class="map-years" role="group" aria-label="Eleição exibida no mapa">
+              <button class="map-year active" type="button" data-map-year="2026">2026 ao vivo</button>
+              <button class="map-year" type="button" data-map-year="2022">2022 final</button>
+            </div>
+            <div class="map-modes" role="group" aria-label="Modo do mapa">
+              <button class="map-mode active" type="button" data-map-mode="leader">Liderança</button>
+              <button class="map-mode" type="button" data-map-mode="progress">Apuração</button>
+            </div>
           </div>
         </div>
 
         <div class="map-national-progress">
           <div class="map-national-progress-copy">
-            <span>Apuração nacional</span>
+            <span id="mapNationalProgressLabel">Apuração nacional</span>
             <strong id="mapNationalProgressText">—</strong>
           </div>
           <div class="map-national-progress-track">

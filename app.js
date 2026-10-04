@@ -45,9 +45,15 @@
     deploySignature: null,
     mapTimer: null,
     mapMode: 'leader',
+    mapYear: '2026',
     mapGeo: null,
     mapData: new Map(),
+    mapData2022: new Map(),
     mapSignatures: new Map(),
+    map2022Loaded: false,
+    map2022Loading: false,
+    mapLastUpdatedAt: null,
+    nationalProgress2026: 0,
     nationalCandidates: [],
     selectedMapUf: null,
     resultSignatures: new Map(),
@@ -66,6 +72,7 @@
     mapStateDetail: document.querySelector('#mapStateDetail'),
     mapLegend: document.querySelector('#mapLegend'),
     mapStatus: document.querySelector('#mapStatus'),
+    mapNationalProgressLabel: document.querySelector('#mapNationalProgressLabel'),
     mapNationalProgressText: document.querySelector('#mapNationalProgressText'),
     mapNationalProgressBar: document.querySelector('#mapNationalProgressBar'),
     presProgressText: document.querySelector('#presProgressText'),
@@ -109,6 +116,10 @@
   function resultUrl(uf, cargoCode, electionCode) {
     const e = padElection(electionCode);
     return `${TSE_BASE}/${state.cycle}/${electionCode}/dados/${uf}/${uf}-c${String(cargoCode).padStart(4, '0')}-e${e}-u.json`;
+  }
+
+  function historical2022PresidentUrl(uf) {
+    return `https://resultados.tse.jus.br/oficial/ele2022/545/dados-simplificados/${uf}/${uf}-c0001-e000545-r.json`;
   }
 
   function photoUrl(c, uf, electionCode) {
@@ -229,7 +240,7 @@
   function candidateMapColor(c) {
     const name = normalizedCandidateName(c);
 
-    if (name.includes('FLAVIO BOLSONARO')) return '#103B73';
+    if (name.includes('FLAVIO BOLSONARO') || name.includes('JAIR BOLSONARO')) return '#103B73';
     if (name === 'LULA' || name.includes('LUIZ INACIO LULA')) return '#D62828';
 
     const key = candidateKey(c);
@@ -315,6 +326,61 @@
     };
   }
 
+  function statePresidentSummary2022(data) {
+    const candidates = candidateArray(data).sort(candidateSort);
+    const leader = candidates[0] || null;
+    const second = candidates[1] || null;
+    return {
+      candidates,
+      leader,
+      second,
+      diff: Math.abs(voteNumber(leader?.vap) - voteNumber(second?.vap)),
+      progress: 100,
+      timestamp: '30/10/2022 • resultado final'
+    };
+  }
+
+  function activeMapData() {
+    return state.mapYear === '2022' ? state.mapData2022 : state.mapData;
+  }
+
+  function activeMapSummary(uf) {
+    return activeMapData().get(uf);
+  }
+
+  function updateMapNationalProgress() {
+    if (!els.mapNationalProgressLabel || !els.mapNationalProgressText || !els.mapNationalProgressBar) return;
+
+    if (state.mapYear === '2022') {
+      els.mapNationalProgressLabel.textContent = 'Resultado final do 2º turno • 2022';
+      els.mapNationalProgressText.textContent = '100,00%';
+      els.mapNationalProgressBar.style.width = '100%';
+      return;
+    }
+
+    const progress = Math.max(0, Math.min(100, state.nationalProgress2026 || 0));
+    els.mapNationalProgressLabel.textContent = 'Apuração nacional • 2026';
+    els.mapNationalProgressText.textContent = formatPercent(progress);
+    els.mapNationalProgressBar.style.width = `${progress}%`;
+  }
+
+  function updateMapStatus() {
+    if (!els.mapStatus) return;
+
+    if (state.mapYear === '2022') {
+      els.mapStatus.textContent = state.map2022Loaded
+        ? 'Resultado final do 2º turno de 2022 • dados oficiais do TSE'
+        : 'Carregando resultado final de 2022…';
+      return;
+    }
+
+    if (state.mapLastUpdatedAt) {
+      els.mapStatus.textContent = `27 UFs • consulta ${new Date(state.mapLastUpdatedAt).toLocaleTimeString('pt-BR')} • atualização a cada 2s`;
+    } else {
+      els.mapStatus.textContent = 'Carregando resultados de 2026 por UF…';
+    }
+  }
+
   function progressFill(progress) {
     const p = Math.max(0, Math.min(100, Number(progress) || 0));
     const light = 16 + (p / 100) * 48;
@@ -322,15 +388,15 @@
   }
 
   function mapStateFill(uf) {
-    const summary = state.mapData.get(uf);
+    const summary = activeMapSummary(uf);
     if (!summary) return '#23152c';
-    if (state.mapMode === 'progress') return progressFill(summary.progress);
+    if (state.mapYear === '2026' && state.mapMode === 'progress') return progressFill(summary.progress);
     if (!summary.leader || voteNumber(summary.leader?.vap) === 0) return '#2b1b34';
     return candidateMapColor(summary.leader);
   }
 
   function stateMapHtml(uf) {
-    const summary = state.mapData.get(uf);
+    const summary = activeMapSummary(uf);
     const feature = state.mapGeo?.features?.find(f => String(f.properties?.sigla || '').toLowerCase() === uf);
     const name = feature?.properties?.nome || uf.toUpperCase();
 
@@ -340,14 +406,15 @@
 
     const leaderName = summary.leader ? candidateDisplayName(summary.leader) : '—';
     const secondName = summary.second ? candidateDisplayName(summary.second) : '—';
+    const historical = state.mapYear === '2022';
     return `
-      <span class="map-detail-kicker">${name.toUpperCase()} • ${uf.toUpperCase()}</span>
+      <span class="map-detail-kicker">${name.toUpperCase()} • ${uf.toUpperCase()} • ${historical ? '2022 FINAL' : '2026 AO VIVO'}</span>
       <strong>${leaderName}</strong>
       <div class="map-detail-percent">${formatPercent(summary.leader?.pvap)}</div>
       <div class="map-detail-row"><span>2º colocado</span><b>${secondName} • ${formatPercent(summary.second?.pvap)}</b></div>
       <div class="map-detail-row"><span>Diferença</span><b>${summary.diff.toLocaleString('pt-BR')} votos</b></div>
-      <div class="map-detail-row"><span>Seções totalizadas</span><b>${formatPercent(summary.progress)}</b></div>
-      <div class="map-detail-row"><span>Última totalização</span><b>${summary.timestamp}</b></div>
+      <div class="map-detail-row"><span>Seções totalizadas</span><b>${historical ? '100,00%' : formatPercent(summary.progress)}</b></div>
+      <div class="map-detail-row"><span>${historical ? 'Eleição' : 'Última totalização'}</span><b>${historical ? '2º turno • 30/10/2022' : summary.timestamp}</b></div>
     `;
   }
 
@@ -361,12 +428,14 @@
 
   function positionMapTooltip(event, uf) {
     if (!els.mapTooltip) return;
-    const summary = state.mapData.get(uf);
+    const summary = activeMapSummary(uf);
     const feature = state.mapGeo?.features?.find(f => String(f.properties?.sigla || '').toLowerCase() === uf);
     const name = feature?.properties?.nome || uf.toUpperCase();
     const leader = summary?.leader ? candidateDisplayName(summary.leader) : 'Aguardando dados';
 
-    if (state.mapMode === 'progress') {
+    if (state.mapYear === '2022') {
+      els.mapTooltip.innerHTML = `<strong>${name} • 2022</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)} dos votos</b><small>Resultado final • 2º turno</small>`;
+    } else if (state.mapMode === 'progress') {
       els.mapTooltip.innerHTML = `<strong>${name}</strong><span>Seções totalizadas</span><b>${formatPercent(summary?.progress)}</b><small>${leader} lidera com ${formatPercent(summary?.leader?.pvap)}</small>`;
     } else {
       els.mapTooltip.innerHTML = `<strong>${name}</strong><span>${leader}</span><b>${formatPercent(summary?.leader?.pvap)} dos votos</b><small>Apuração: ${formatPercent(summary?.progress)} das seções</small>`;
@@ -383,7 +452,7 @@
   function renderMapLegend() {
     if (!els.mapLegend) return;
 
-    if (state.mapMode === 'progress') {
+    if (state.mapYear === '2026' && state.mapMode === 'progress') {
       els.mapLegend.innerHTML = `
         <span class="legend-title">Seções totalizadas</span>
         <span><i style="background:${progressFill(10)}"></i>0–20%</span>
@@ -395,7 +464,7 @@
     }
 
     const counts = new Map();
-    state.mapData.forEach(summary => {
+    activeMapData().forEach(summary => {
       if (!summary?.leader || voteNumber(summary.leader?.vap) === 0) return;
       const key = candidateKey(summary.leader);
       if (!counts.has(key)) counts.set(key, { candidate: summary.leader, count: 0 });
@@ -411,7 +480,9 @@
     els.mapLegend.replaceChildren();
     const title = document.createElement('span');
     title.className = 'legend-title';
-    title.textContent = 'Cor = candidato que lidera na UF';
+    title.textContent = state.mapYear === '2022'
+      ? 'Resultado final de 2022 • vencedor por UF'
+      : 'Cor = candidato que lidera na UF';
     els.mapLegend.appendChild(title);
 
     leaders.forEach(({candidate, count}) => {
@@ -427,17 +498,17 @@
     document.querySelectorAll('.map-state').forEach(path => {
       const uf = path.dataset.uf;
       path.style.fill = mapStateFill(uf);
-      const summary = state.mapData.get(uf);
+      const summary = activeMapSummary(uf);
       path.style.opacity = summary ? '0.96' : '0.55';
     });
 
     document.querySelectorAll('.map-label').forEach(label => {
-      const summary = state.mapData.get(label.dataset.uf);
+      const summary = activeMapSummary(label.dataset.uf);
       label.style.opacity = summary ? '1' : '.55';
 
       const pct = label.querySelector('.map-label-progress');
       if (pct) {
-        const showProgress = state.mapMode === 'progress';
+        const showProgress = state.mapYear === '2026' && state.mapMode === 'progress';
         pct.textContent = showProgress
           ? (summary ? `${Math.round(summary.progress)}%` : '—')
           : '';
@@ -446,7 +517,66 @@
     });
 
     renderMapLegend();
+    updateMapNationalProgress();
+    updateMapStatus();
     if (state.selectedMapUf) showMapDetail(state.selectedMapUf);
+  }
+
+  async function loadPresidentialMap2022() {
+    if (state.map2022Loaded || state.map2022Loading) return;
+    state.map2022Loading = true;
+    updateMapStatus();
+
+    const requests = MAP_UFS.map(uf =>
+      fetchJson(historical2022PresidentUrl(uf))
+        .then(data => ({ uf, data }))
+    );
+
+    const results = await Promise.allSettled(requests);
+    let ok = 0;
+
+    results.forEach(result => {
+      if (result.status !== 'fulfilled') return;
+      ok += 1;
+      const { uf, data } = result.value;
+      state.mapData2022.set(uf, statePresidentSummary2022(data));
+    });
+
+    state.map2022Loaded = ok > 0;
+    state.map2022Loading = false;
+
+    if (state.mapYear === '2022') {
+      updateMapVisuals();
+      els.mapStatus.textContent = state.map2022Loaded
+        ? `${ok}/27 UFs • resultado final do 2º turno de 2022 • TSE`
+        : 'Não foi possível carregar o resultado de 2022.';
+    }
+  }
+
+  function setMapYear(year) {
+    state.mapYear = year === '2022' ? '2022' : '2026';
+
+    document.querySelectorAll('.map-year').forEach(button => {
+      button.classList.toggle('active', button.dataset.mapYear === state.mapYear);
+    });
+
+    const progressButton = document.querySelector('[data-map-mode="progress"]');
+    if (state.mapYear === '2022') {
+      state.mapMode = 'leader';
+      document.querySelectorAll('.map-mode').forEach(button => {
+        button.classList.toggle('active', button.dataset.mapMode === 'leader');
+      });
+      if (progressButton) {
+        progressButton.disabled = true;
+        progressButton.title = 'O comparativo de 2022 usa o resultado final já totalizado.';
+      }
+      loadPresidentialMap2022();
+    } else if (progressButton) {
+      progressButton.disabled = false;
+      progressButton.removeAttribute('title');
+    }
+
+    updateMapVisuals();
   }
 
   async function initPresidentialMap() {
@@ -502,8 +632,13 @@
         els.presidencyMap.appendChild(textEl);
       });
 
+      document.querySelectorAll('.map-year').forEach(button => {
+        button.addEventListener('click', () => setMapYear(button.dataset.mapYear));
+      });
+
       document.querySelectorAll('.map-mode').forEach(button => {
         button.addEventListener('click', () => {
+          if (button.disabled || state.mapYear === '2022') return;
           state.mapMode = button.dataset.mapMode || 'leader';
           document.querySelectorAll('.map-mode').forEach(b => b.classList.toggle('active', b === button));
           updateMapVisuals();
@@ -544,7 +679,10 @@
     if (changed) updateMapVisuals();
 
     const now = new Date();
-    els.mapStatus.textContent = `${ok}/27 UFs consultadas • ${now.toLocaleTimeString('pt-BR')} • atualização a cada 2s`;
+    state.mapLastUpdatedAt = now.getTime();
+    if (state.mapYear === '2026') {
+      els.mapStatus.textContent = `${ok}/27 UFs consultadas • ${now.toLocaleTimeString('pt-BR')} • atualização a cada 2s`;
+    }
   }
 
   async function fetchJson(url) {
@@ -941,13 +1079,8 @@
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
     els.presProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
-
-    if (els.mapNationalProgressText) {
-      els.mapNationalProgressText.textContent = formatPercent(progress);
-    }
-    if (els.mapNationalProgressBar) {
-      els.mapNationalProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
-    }
+    state.nationalProgress2026 = Math.max(0, Math.min(100, progress ?? 0));
+    updateMapNationalProgress();
     els.presFoot.textContent = `Totalização TSE: ${totalizationTimestamp(data)} • arquivo gerado em ${generationTimestamp(data)} • ${candidates.length} candidatura(s) no resultado.`;
   }
 

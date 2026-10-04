@@ -309,6 +309,13 @@ a { color: inherit; }
 }
 .pres-map-head h3 { margin: 5px 0 0; font-size: 24px; letter-spacing: -.03em; }
 .pres-map-head p:last-child { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+.map-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.map-years,
 .map-modes {
   display: inline-flex;
   padding: 4px;
@@ -316,6 +323,7 @@ a { color: inherit; }
   background: rgba(0,0,0,.18);
   border: 1px solid rgba(255,255,255,.08);
 }
+.map-year,
 .map-mode {
   border: 0;
   border-radius: 9px;
@@ -326,9 +334,32 @@ a { color: inherit; }
   font-size: 12px;
   font-weight: 800;
 }
+.map-year.active,
 .map-mode.active {
   color: var(--text);
   background: rgba(255,255,255,.09);
+}
+.map-mode:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+.map-years {
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.08);
+}
+.map-year {
+  border-radius: 9px;
+  padding: 8px 11px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+.map-year[data-map-year="2022"].active {
+  background: rgba(255,255,255,.12);
 }
 .map-national-progress {
   margin-top: 16px;
@@ -761,7 +792,10 @@ a { color: inherit; }
   .section-card { padding: 17px; border-radius: 20px; }
   .pres-map { padding: 14px; }
   .pres-map-head { align-items: stretch; flex-direction: column; gap: 12px; }
+  .map-controls { width: 100%; }
+  .map-years,
   .map-modes { width: 100%; }
+  .map-year,
   .map-mode { flex: 1; }
   .pres-map-grid { gap: 12px; }
   .map-canvas-wrap { min-height: 300px; }
