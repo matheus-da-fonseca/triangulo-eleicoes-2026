@@ -411,10 +411,21 @@
     }
   }
 
-  function resultTimestamp(data) {
-    const dt = String(data?.dg ?? data?.dt ?? '').trim();
-    const ht = String(data?.hg ?? data?.ht ?? '').trim();
-    return [dt, ht].filter(Boolean).join(' • ') || 'horário não informado';
+  function totalizationTimestamp(data) {
+    const dt = String(data?.dt ?? '').trim();
+    const ht = String(data?.ht ?? '').trim();
+
+    if (dt || ht) return [dt, ht].filter(Boolean).join(' • ');
+
+    const andamento = String(data?.and ?? '').toLowerCase();
+    if (andamento === 'n') return 'aguardando totalização';
+    return 'totalização ainda sem horário';
+  }
+
+  function generationTimestamp(data) {
+    const dg = String(data?.dg ?? '').trim();
+    const hg = String(data?.hg ?? '').trim();
+    return [dg, hg].filter(Boolean).join(' • ') || 'geração não informada';
   }
 
   function updateReadAge() {
@@ -453,12 +464,12 @@
       els.presidentRanking.parentElement.hidden = true;
     }
 
-    els.tseDataTime.textContent = resultTimestamp(data);
+    els.tseDataTime.textContent = totalizationTimestamp(data);
 
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
     els.presProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
-    els.presFoot.textContent = `Arquivo do TSE atualizado em ${resultTimestamp(data)} • ${candidates.length} candidatura(s) no resultado.`;
+    els.presFoot.textContent = `Totalização TSE: ${totalizationTimestamp(data)} • arquivo gerado em ${generationTimestamp(data)} • ${candidates.length} candidatura(s) no resultado.`;
   }
 
   function officeId(uf, office) { return `${uf}-${office.key}`; }
@@ -537,7 +548,7 @@
     if (!card) return;
     const progress = totalizationPercent(data);
     card.querySelector('.office-progress').textContent = `${formatPercent(progress)} das seções`;
-    card.querySelector('.office-foot').textContent = `TSE: ${resultTimestamp(data)} • ${candidateArray(data).length} candidatura(s).`;
+    card.querySelector('.office-foot').textContent = `Totalização TSE: ${totalizationTimestamp(data)} • ${candidateArray(data).length} candidatura(s).`;
     renderOfficeFromState(id);
   }
 
