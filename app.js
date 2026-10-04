@@ -35,7 +35,8 @@
     liveText: document.querySelector('#liveText'),
     lastRead: document.querySelector('#lastRead'),
     refreshBtn: document.querySelector('#refreshBtn'),
-    presidentList: document.querySelector('#presidentList'),
+    presidentFaceoff: document.querySelector('#presidentFaceoff'),
+    presidentRanking: document.querySelector('#presidentRanking'),
     presProgressText: document.querySelector('#presProgressText'),
     presProgressBar: document.querySelector('#presProgressBar'),
     presFoot: document.querySelector('#presFoot'),
@@ -71,6 +72,44 @@
   function resultUrl(uf, cargoCode, electionCode) {
     const e = padElection(electionCode);
     return `${TSE_BASE}/${state.cycle}/${electionCode}/dados/${uf}/${uf}-c${String(cargoCode).padStart(4, '0')}-e${e}-u.json`;
+  }
+
+  function photoUrl(c, uf, electionCode) {
+    const sqcand = String(c?.sqcand || '').trim();
+    if (!sqcand) return '';
+    return `${TSE_BASE}/${state.cycle}/${electionCode}/fotos/${uf}/${sqcand}.jpeg`;
+  }
+
+  function candidateDisplayName(c) {
+    return String(c?.nmu || c?.nm || 'Nome não informado').trim();
+  }
+
+  function candidateInitials(c) {
+    const parts = candidateDisplayName(c).split(/\s+/).filter(Boolean);
+    return (parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : parts[0]?.slice(0, 2) || '?').toUpperCase();
+  }
+
+  function candidatePhoto(c, context, extraClass = '') {
+    const wrap = document.createElement('div');
+    wrap.className = `candidate-photo ${extraClass}`.trim();
+
+    const fallback = document.createElement('span');
+    fallback.className = 'candidate-photo-fallback';
+    fallback.textContent = candidateInitials(c);
+    wrap.appendChild(fallback);
+
+    const src = photoUrl(c, context?.uf || 'br', context?.electionCode || state.stateElection);
+    if (src) {
+      const img = document.createElement('img');
+      img.alt = `Foto de ${candidateDisplayName(c)}`;
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.src = src;
+      img.addEventListener('load', () => fallback.setAttribute('hidden', ''));
+      img.addEventListener('error', () => img.remove());
+      wrap.appendChild(img);
+    }
+    return wrap;
   }
 
   async function fetchJson(url) {
@@ -182,20 +221,22 @@
     return sigla || nome || 'Partido não informado';
   }
 
-  function candidateCard(c, index) {
+  function candidateCard(c, rankNumber, context) {
     const card = document.createElement('div');
     card.className = 'candidate-card';
 
     const rank = document.createElement('div');
     rank.className = 'rank';
-    rank.textContent = `${index + 1}º`;
+    rank.textContent = `${rankNumber}º`;
+
+    const photo = candidatePhoto(c, context);
 
     const info = document.createElement('div');
     info.className = 'candidate-info';
     const name = document.createElement('div');
     name.className = 'candidate-name';
     const strong = document.createElement('strong');
-    strong.textContent = c?.nmu || c?.nm || 'Nome não informado';
+    strong.textContent = candidateDisplayName(c);
     name.appendChild(strong);
     if (isElected(c)) {
       const badge = document.createElement('span');
@@ -217,22 +258,77 @@
     votes.textContent = `${formatVotes(c?.vap)} votos`;
     value.append(pct, votes);
 
-    card.append(rank, info, value);
+    card.append(rank, photo, info, value);
     return card;
   }
 
-  function renderCandidates(container, candidates, limit = Infinity) {
+  function renderCandidates(container, candidates, context, startRank = 1) {
     container.replaceChildren();
     const sorted = [...candidates].sort(candidateSort);
-    const visible = sorted.slice(0, limit);
-    if (!visible.length) {
+    if (!sorted.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.textContent = 'Nenhum candidato disponível neste arquivo ainda.';
       container.appendChild(empty);
       return;
     }
-    visible.forEach((c, index) => container.appendChild(candidateCard(c, index)));
+    sorted.forEach((c, index) => container.appendChild(candidateCard(c, startRank + index, context)));
+  }
+
+  function faceoffCandidate(c, context, position) {
+    const card = document.createElement('div');
+    card.className = `faceoff-candidate ${position}`;
+
+    const photo = candidatePhoto(c, context, 'faceoff-photo');
+    const copy = document.createElement('div');
+    copy.className = 'faceoff-copy';
+
+    const label = document.createElement('span');
+    label.className = 'faceoff-label';
+    label.textContent = position === 'left' ? '1º colocado' : '2º colocado';
+
+    const name = document.createElement('h3');
+    name.className = 'faceoff-name';
+    name.textContent = candidateDisplayName(c);
+
+    const meta = document.createElement('div');
+    meta.className = 'faceoff-meta';
+    meta.textContent = `${c?.n ? `Nº ${c.n} • ` : ''}${partyLabel(c)}`;
+
+    const value = document.createElement('div');
+    value.className = 'faceoff-value';
+    value.textContent = formatPercent(c?.pvap);
+
+    const votes = document.createElement('div');
+    votes.className = 'faceoff-votes';
+    votes.textContent = `${formatVotes(c?.vap)} votos`;
+
+    copy.append(label, name, meta, value, votes);
+    card.append(photo, copy);
+    return card;
+  }
+
+  function renderFaceoff(candidates) {
+    els.presidentFaceoff.replaceChildren();
+    const sorted = [...candidates].sort(candidateSort);
+    const context = { uf: 'br', electionCode: state.federalElection };
+
+    if (!sorted.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Nenhum candidato presidencial disponível ainda.';
+      els.presidentFaceoff.appendChild(empty);
+      return;
+    }
+
+    els.presidentFaceoff.appendChild(faceoffCandidate(sorted[0], context, 'left'));
+
+    if (sorted[1]) {
+      const vs = document.createElement('div');
+      vs.className = 'faceoff-vs';
+      vs.textContent = 'VS';
+      els.presidentFaceoff.append(vs, faceoffCandidate(sorted[1], context, 'right'));
+    }
   }
 
   function resultTimestamp(data) {
@@ -242,8 +338,22 @@
   }
 
   function renderPresident(data) {
-    const candidates = candidateArray(data);
-    renderCandidates(els.presidentList, candidates, Infinity);
+    const candidates = candidateArray(data).sort(candidateSort);
+    renderFaceoff(candidates);
+
+    const rest = candidates.slice(2);
+    if (rest.length) {
+      renderCandidates(
+        els.presidentRanking,
+        rest,
+        { uf: 'br', electionCode: state.federalElection },
+        3
+      );
+      els.presidentRanking.parentElement.hidden = false;
+    } else {
+      els.presidentRanking.replaceChildren();
+      els.presidentRanking.parentElement.hidden = true;
+    }
 
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
@@ -273,13 +383,8 @@
     document.querySelectorAll('.office-card').forEach(card => {
       const input = card.querySelector('.candidate-search');
       const btn = card.querySelector('.show-more');
+      btn.hidden = true;
       input.addEventListener('input', () => renderOfficeFromState(card.dataset.officeId));
-      btn.addEventListener('click', () => {
-        const entry = state.offices.get(card.dataset.officeId);
-        if (!entry) return;
-        entry.expanded = !entry.expanded;
-        renderOfficeFromState(card.dataset.officeId);
-      });
     });
   }
 
@@ -305,23 +410,20 @@
       ].some(v => String(v ?? '').toLocaleLowerCase('pt-BR').includes(query)));
     }
 
-    const showAll = entry.expanded || !!query;
-    const limit = showAll ? Infinity : DEFAULT_VISIBLE;
-    renderCandidates(list, candidates, limit);
+    renderCandidates(
+      list,
+      candidates,
+      { uf: entry.uf, electionCode: state.stateElection },
+      1
+    );
 
-    const total = candidates.length;
-    more.hidden = !!query || total <= DEFAULT_VISIBLE;
-    if (!more.hidden) {
-      more.textContent = entry.expanded
-        ? 'Mostrar menos'
-        : `Ver todos (${total})`;
-    }
+    more.hidden = true;
   }
 
   function renderOffice(uf, office, data) {
     const id = officeId(uf, office);
     const previous = state.offices.get(id);
-    state.offices.set(id, { data, expanded: previous?.expanded || false });
+    state.offices.set(id, { data, uf, expanded: previous?.expanded || false });
 
     const card = document.querySelector(`[data-office-id="${CSS.escape(id)}"]`);
     if (!card) return;
@@ -370,7 +472,8 @@
         console.warn('Falha de atualização', job, r.reason);
         if (job.type === 'president') {
           if (!state.firstSuccess) {
-            els.presidentList.innerHTML = '<div class="error-box">Não foi possível ler o resultado presidencial agora. Tentaremos novamente automaticamente.</div>';
+            els.presidentFaceoff.innerHTML = '<div class="error-box">Não foi possível ler o resultado presidencial agora. Tentaremos novamente automaticamente.</div>';
+            els.presidentRanking.replaceChildren();
           }
           els.presFoot.textContent = `Falha temporária: ${r.reason?.message || 'erro desconhecido'}`;
         } else {
