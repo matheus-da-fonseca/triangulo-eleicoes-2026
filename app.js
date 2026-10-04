@@ -44,6 +44,7 @@
     presidentFaceoff: document.querySelector('#presidentFaceoff'),
     presidentRanking: document.querySelector('#presidentRanking'),
     presProgressText: document.querySelector('#presProgressText'),
+    presSituation: document.querySelector('#presSituation'),
     presProgressBar: document.querySelector('#presProgressBar'),
     presFoot: document.querySelector('#presFoot'),
     scOffices: document.querySelector('#scOffices'),
@@ -319,6 +320,60 @@
     return String(c?.e || '').toLowerCase() === 's';
   }
 
+  function totalValidCandidateVotes(candidates) {
+    return candidates.reduce((sum, c) => sum + voteNumber(c?.vap), 0);
+  }
+
+  function executiveSituation(data) {
+    const candidates = candidateArray(data).sort(candidateSort);
+    const totalValid = totalValidCandidateVotes(candidates);
+    const leaderVotes = voteNumber(candidates[0]?.vap);
+
+    if (!totalValid || !leaderVotes) {
+      return {
+        type: 'waiting',
+        text: 'Aguardando votos • 2º turno ocorre se ninguém obtiver maioria absoluta dos votos válidos'
+      };
+    }
+
+    if (leaderVotes * 2 > totalValid) {
+      return {
+        type: 'majority',
+        text: 'Maioria absoluta no recorte atual • sem 2º turno se este fosse o resultado final'
+      };
+    }
+
+    return {
+      type: 'runoff',
+      text: 'Sem maioria absoluta no recorte atual • haveria 2º turno entre 1º e 2º se este fosse o resultado final'
+    };
+  }
+
+  function officeSituation(office, data) {
+    if (office.code === 3) return executiveSituation(data);
+
+    if (office.code === 5) {
+      const hasVotes = totalValidCandidateVotes(candidateArray(data)) > 0;
+      return {
+        type: hasVotes ? 'no-runoff' : 'waiting',
+        text: hasVotes
+          ? 'Sem 2º turno • os 2 mais votados ocupam as vagas no recorte atual'
+          : 'Aguardando votos • 2 vagas • eleição por maioria relativa, sem 2º turno'
+      };
+    }
+
+    return {
+      type: 'proportional',
+      text: 'Sem 2º turno • sistema proporcional • vagas dependem da votação do partido/federação e da votação nominal'
+    };
+  }
+
+  function setSituation(element, situation) {
+    if (!element || !situation) return;
+    element.className = `election-situation status-${situation.type}`;
+    element.textContent = situation.text;
+  }
+
   function partyLabel(c) {
     const sigla = String(c?._partySigla || '').trim();
     const nome = String(c?._partyName || '').trim();
@@ -522,6 +577,7 @@
     }
 
     els.tseDataTime.textContent = totalizationTimestamp(data);
+    setSituation(els.presSituation, executiveSituation(data));
 
     const progress = totalizationPercent(data);
     els.presProgressText.textContent = formatPercent(progress);
@@ -608,6 +664,7 @@
     if (!card) return;
     const progress = totalizationPercent(data);
     card.querySelector('.office-progress').textContent = `${formatPercent(progress)} das seções`;
+    setSituation(card.querySelector('.office-situation'), officeSituation(office, data));
     const vacancies = Number(office.vacancies?.[uf] || 0);
     card.querySelector('.office-foot').textContent = `Totalização TSE: ${totalizationTimestamp(data)} • faixa colorida: top ${vacancies} do ranking nominal • ${candidateArray(data).length} candidatura(s).`;
     renderOfficeFromState(id);
@@ -618,6 +675,7 @@
     const card = document.querySelector(`[data-office-id="${CSS.escape(id)}"]`);
     if (!card) return;
     card.querySelector('.office-progress').textContent = 'indisponível';
+    setSituation(card.querySelector('.office-situation'), { type: 'waiting', text: 'Situação temporariamente indisponível' });
     card.querySelector('.office-list').innerHTML = '<div class="error-box">Não foi possível ler este resultado agora. Tentaremos novamente automaticamente.</div>';
     card.querySelector('.show-more').hidden = true;
     card.querySelector('.office-foot').textContent = `Falha temporária: ${err?.message || 'erro desconhecido'}`;
