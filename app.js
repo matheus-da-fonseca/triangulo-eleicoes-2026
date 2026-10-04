@@ -27,8 +27,8 @@
   };
 
   const MAP_2022_COLORS = {
-    lula: '#ff7a35',
-    bolsonaro: '#3fb45b'
+    lula: '#D62828',
+    bolsonaro: '#103B73'
   };
 
   const PRESIDENT_VICES_2026 = [
