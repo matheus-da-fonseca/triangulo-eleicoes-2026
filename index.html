@@ -8,7 +8,17 @@
   <title>Triângulo das Bermudas — Eleições 2026</title>
   <link rel="preconnect" href="https://resultados.tse.jus.br" crossorigin>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./styles.css" />
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search);
+      const token = params.get('__deploy') || Date.now().toString();
+      window.__APP_CACHE_BUST__ = token;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = `./styles.css?d=${encodeURIComponent(token)}`;
+      document.head.appendChild(link);
+    })();
+  </script>
 </head>
 <body>
   <div class="bg" aria-hidden="true"></div>
@@ -135,6 +145,13 @@
     </article>
   </template>
 
-  <script src="./app.js" defer></script>
+  <script>
+    (() => {
+      const script = document.createElement('script');
+      script.src = `./app.js?d=${encodeURIComponent(window.__APP_CACHE_BUST__ || Date.now())}`;
+      script.async = false;
+      document.body.appendChild(script);
+    })();
+  </script>
 </body>
 </html>

@@ -5,6 +5,7 @@
   const CONFIG_URL = `${TSE_BASE}/comum/config/ele-c.json`;
   const POLL_MS = 1_000;
   const REQUEST_TIMEOUT_MS = 8_000;
+  const DEPLOY_WATCH_MS = 15_000;
   const DEFAULT_VISIBLE = 6;
 
   const FALLBACK = {
@@ -29,6 +30,8 @@
     firstSuccess: false,
     lastPollAt: null,
     ageTimer: null,
+    deployTimer: null,
+    deploySignature: null,
     offices: new Map()
   };
 
@@ -112,6 +115,72 @@
       wrap.appendChild(img);
     }
     return wrap;
+  }
+
+  function fastHash(text) {
+    let hash = 2166136261;
+    for (let i = 0; i < text.length; i += 1) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16);
+  }
+
+  async function assetFingerprint(path) {
+    const url = new URL(path, location.href);
+    url.searchParams.set('__check', Date.now().toString());
+
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status} em ${path}`);
+
+    const text = await response.text();
+    const etag = response.headers.get('etag') || '';
+    const modified = response.headers.get('last-modified') || '';
+    return `${etag}|${modified}|${text.length}|${fastHash(text)}`;
+  }
+
+  async function deploymentSignature() {
+    const paths = ['./index.html', './app.js', './styles.css'];
+    const fingerprints = await Promise.all(paths.map(assetFingerprint));
+    return fingerprints.join('::');
+  }
+
+  function reloadForNewDeployment() {
+    try {
+      sessionStorage.setItem('triangulo-scroll-y', String(window.scrollY));
+    } catch (_) {}
+
+    const nextUrl = new URL(location.href);
+    nextUrl.searchParams.set('__deploy', Date.now().toString());
+    location.replace(nextUrl.toString());
+  }
+
+  async function watchDeployment() {
+    if (document.hidden) return;
+
+    try {
+      const signature = await deploymentSignature();
+      if (!state.deploySignature) {
+        state.deploySignature = signature;
+        return;
+      }
+
+      if (signature !== state.deploySignature) {
+        reloadForNewDeployment();
+      }
+    } catch (err) {
+      console.warn('Não foi possível verificar uma nova versão do site.', err);
+    }
+  }
+
+  function restoreScrollAfterDeployment() {
+    try {
+      const stored = sessionStorage.getItem('triangulo-scroll-y');
+      if (stored === null) return;
+      sessionStorage.removeItem('triangulo-scroll-y');
+      const y = Number(stored);
+      if (Number.isFinite(y)) requestAnimationFrame(() => window.scrollTo(0, y));
+    } catch (_) {}
   }
 
   async function fetchJson(url) {
@@ -539,8 +608,11 @@
     mountOfficeCards();
     await loadConfig();
     await refreshAll();
+    restoreScrollAfterDeployment();
+    await watchDeployment();
     state.timer = setInterval(refreshAll, POLL_MS);
     state.ageTimer = setInterval(updateReadAge, 250);
+    state.deployTimer = setInterval(watchDeployment, DEPLOY_WATCH_MS);
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
@@ -548,6 +620,7 @@
         state.timer = null;
       } else {
         refreshAll();
+        watchDeployment();
         if (!state.timer) state.timer = setInterval(refreshAll, POLL_MS);
       }
     });
