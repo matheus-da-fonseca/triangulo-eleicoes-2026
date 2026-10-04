@@ -299,7 +299,11 @@ a { color: inherit; }
   font-weight: 900;
   letter-spacing: .04em;
 }
-.candidate-photo.faceoff-photo { border-radius: 18px; }
+.candidate-photo.faceoff-photo {
+  width: 142px;
+  height: 178px;
+  border-radius: 18px;
+}
 .candidate-photo.faceoff-photo .candidate-photo-fallback { font-size: 24px; }
 .candidate-info { min-width: 0; }
 .candidate-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -405,7 +409,7 @@ a { color: inherit; }
   .candidate-value strong { font-size: 17px; }
   .candidate-photo { width: 44px; height: 44px; border-radius: 12px; }
   .faceoff-candidate, .faceoff-candidate.right { min-height: 210px; padding: 15px; gap: 13px; }
-  .faceoff-photo { width: 105px; height: 138px; }
+  .candidate-photo.faceoff-photo { width: 105px; height: 138px; }
   .faceoff-name { font-size: clamp(23px, 8vw, 34px); }
   .faceoff-value { font-size: 32px; }
   .state-title { padding: 15px 16px; }
