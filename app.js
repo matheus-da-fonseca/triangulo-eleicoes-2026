@@ -103,6 +103,11 @@
     mapNationalProgressLabel: document.querySelector('#mapNationalProgressLabel'),
     mapNationalProgressText: document.querySelector('#mapNationalProgressText'),
     mapNationalProgressBar: document.querySelector('#mapNationalProgressBar'),
+    mapNationalCounts: document.querySelector('#mapNationalCounts'),
+    mapRemainingElectors: document.querySelector('#mapRemainingElectors'),
+    mapTotalElectors: document.querySelector('#mapTotalElectors'),
+    mapCountedVotes: document.querySelector('#mapCountedVotes'),
+    mapRemainingNote: document.querySelector('#mapRemainingNote'),
     presProgressText: document.querySelector('#presProgressText'),
     presSituation: document.querySelector('#presSituation'),
     presProgressBar: document.querySelector('#presProgressBar'),
@@ -398,6 +403,29 @@
     return activeMapData().get(uf);
   }
 
+  function updateNationalElectorateStats(data) {
+    if (!data) return;
+
+    const totalElectors = data?.e?.te;
+    const remainingElectors = data?.e?.esnt;
+    const countedVotes = data?.v?.tv;
+
+    if (els.mapRemainingElectors) {
+      els.mapRemainingElectors.textContent =
+        remainingElectors === null || remainingElectors === undefined ? '—' : formatVotes(remainingElectors);
+    }
+
+    if (els.mapTotalElectors) {
+      els.mapTotalElectors.textContent =
+        totalElectors === null || totalElectors === undefined ? '—' : formatVotes(totalElectors);
+    }
+
+    if (els.mapCountedVotes) {
+      els.mapCountedVotes.textContent =
+        countedVotes === null || countedVotes === undefined ? '—' : formatVotes(countedVotes);
+    }
+  }
+
   function updateMapNationalProgress() {
     if (!els.mapNationalProgressLabel || !els.mapNationalProgressText || !els.mapNationalProgressBar) return;
 
@@ -405,8 +433,13 @@
       els.mapNationalProgressLabel.textContent = 'Mapa final por UF • 2022';
       els.mapNationalProgressText.textContent = '2º turno';
       els.mapNationalProgressBar.style.width = '100%';
+      if (els.mapNationalCounts) els.mapNationalCounts.hidden = true;
+      if (els.mapRemainingNote) els.mapRemainingNote.hidden = true;
       return;
     }
+
+    if (els.mapNationalCounts) els.mapNationalCounts.hidden = false;
+    if (els.mapRemainingNote) els.mapRemainingNote.hidden = false;
 
     const progress = Math.max(0, Math.min(100, state.nationalProgress2026 || 0));
     els.mapNationalProgressLabel.textContent = 'Apuração nacional • 2026';
@@ -1151,6 +1184,7 @@
     els.presProgressText.textContent = formatPercent(progress);
     els.presProgressBar.style.width = `${Math.max(0, Math.min(100, progress ?? 0))}%`;
     state.nationalProgress2026 = Math.max(0, Math.min(100, progress ?? 0));
+    updateNationalElectorateStats(data);
     updateMapNationalProgress();
     els.presFoot.textContent = `Totalização TSE: ${totalizationTimestamp(data)} • arquivo gerado em ${generationTimestamp(data)} • ${candidates.length} candidatura(s) no resultado.`;
   }

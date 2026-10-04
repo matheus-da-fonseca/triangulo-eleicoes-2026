@@ -405,6 +405,48 @@ a { color: inherit; }
   background: linear-gradient(90deg, var(--violet), var(--pink));
   transition: width .45s ease;
 }
+.map-national-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+  margin-top: 11px;
+}
+.map-national-count {
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,.065);
+  background: rgba(0,0,0,.10);
+}
+.map-national-count.highlight {
+  border-color: rgba(224,137,255,.18);
+  background: rgba(164,80,255,.07);
+}
+.map-national-count span,
+.map-national-count strong {
+  display: block;
+}
+.map-national-count span {
+  color: var(--muted-2);
+  font-size: 9px;
+  line-height: 1.2;
+}
+.map-national-count strong {
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: -.02em;
+}
+.map-remaining-note {
+  margin-top: 7px;
+  color: var(--muted-2);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.map-national-counts[hidden],
+.map-remaining-note[hidden] {
+  display: none !important;
+}
 
 .pres-map-grid {
   display: grid;
@@ -847,6 +889,15 @@ a { color: inherit; }
   }
   .map-national-progress-copy span { font-size: 11px; }
   .map-national-progress-copy strong { font-size: 17px; }
+  .map-national-counts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .map-national-count.highlight {
+    grid-column: 1 / -1;
+  }
+  .map-national-count span { font-size: 9px; }
+  .map-national-count strong { font-size: 14px; }
+  .map-remaining-note { font-size: 9px; }
   .map-state-detail { min-height: 0; }
   .map-foot { flex-direction: column; gap: 4px; }
   .election-situation {
