@@ -15,10 +15,10 @@
   };
 
   const OFFICES = [
-    { code: 3, key: 'governador', label: 'Governador', kicker: 'EXECUTIVO ESTADUAL' },
-    { code: 5, key: 'senador', label: 'Senador', kicker: 'SENADO • 2 VAGAS' },
-    { code: 6, key: 'dep-federal', label: 'Deputado Federal', kicker: 'CÂMARA DOS DEPUTADOS' },
-    { code: 7, key: 'dep-estadual', label: 'Deputado Estadual', kicker: 'ASSEMBLEIA LEGISLATIVA' }
+    { code: 3, key: 'governador', label: 'Governador', kicker: 'EXECUTIVO ESTADUAL', vacancies: { sc: 1, pr: 1 } },
+    { code: 5, key: 'senador', label: 'Senador', kicker: 'SENADO', vacancies: { sc: 2, pr: 2 } },
+    { code: 6, key: 'dep-federal', label: 'Deputado Federal', kicker: 'CÂMARA DOS DEPUTADOS', vacancies: { sc: 16, pr: 30 } },
+    { code: 7, key: 'dep-estadual', label: 'Deputado Estadual', kicker: 'ASSEMBLEIA LEGISLATIVA', vacancies: { sc: 40, pr: 54 } }
   ];
 
   const state = {
@@ -32,6 +32,7 @@
     ageTimer: null,
     deployTimer: null,
     deploySignature: null,
+    resultSignatures: new Map(),
     offices: new Map()
   };
 
@@ -274,6 +275,34 @@
     return normalizePercent(data?.s?.pst ?? data?.pst);
   }
 
+  function resultSignature(data) {
+    const candidates = candidateArray(data);
+    const candidateState = candidates.map(c => [
+      c?.sqcand ?? '',
+      c?.vap ?? '',
+      c?.pvap ?? '',
+      c?.e ?? ''
+    ].join(':')).join('|');
+
+    return [
+      data?.dt ?? '',
+      data?.ht ?? '',
+      data?.dg ?? '',
+      data?.hg ?? '',
+      data?.and ?? '',
+      data?.s?.pst ?? data?.pst ?? '',
+      data?.s?.psi ?? '',
+      data?.s?.psn ?? '',
+      candidateState
+    ].join('::');
+  }
+
+  function jobKey(job) {
+    return job.type === 'president'
+      ? 'br-presidente'
+      : `${job.uf}-${job.office.key}`;
+  }
+
   function candidateSort(a, b) {
     const va = Number(String(a?.vap ?? '').replace(/\D/g, '')) || 0;
     const vb = Number(String(b?.vap ?? '').replace(/\D/g, '')) || 0;
@@ -429,6 +458,11 @@
   }
 
   function updateReadAge() {
+    if (state.refreshing) {
+      els.lastRead.textContent = 'verificando…';
+      return;
+    }
+
     if (!state.lastPollAt) {
       els.lastRead.textContent = 'aguardando';
       return;
@@ -478,7 +512,9 @@
     const fragment = els.officeTemplate.content.cloneNode(true);
     const root = fragment.querySelector('.office-card');
     root.dataset.officeId = officeId(uf, office);
-    fragment.querySelector('.office-kicker').textContent = office.kicker;
+    const vacancies = Number(office.vacancies?.[uf] || 0);
+    const vacancyLabel = vacancies === 1 ? '1 VAGA' : `${vacancies} VAGAS`;
+    fragment.querySelector('.office-kicker').textContent = `${office.kicker} • ${vacancyLabel}`;
     fragment.querySelector('.office-title').textContent = office.label;
     fragment.querySelector('.office-progress').textContent = 'carregando…';
     fragment.querySelector('.office-list').innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
@@ -548,7 +584,8 @@
     if (!card) return;
     const progress = totalizationPercent(data);
     card.querySelector('.office-progress').textContent = `${formatPercent(progress)} das seções`;
-    card.querySelector('.office-foot').textContent = `Totalização TSE: ${totalizationTimestamp(data)} • ${candidateArray(data).length} candidatura(s).`;
+    const vacancies = Number(office.vacancies?.[uf] || 0);
+    card.querySelector('.office-foot').textContent = `Totalização TSE: ${totalizationTimestamp(data)} • ${vacancies} vaga(s) • ${candidateArray(data).length} candidatura(s).`;
     renderOfficeFromState(id);
   }
 
@@ -565,6 +602,7 @@
   async function refreshAll({ manual = false } = {}) {
     if (state.refreshing) return;
     state.refreshing = true;
+    updateReadAge();
     if (manual) setConnection('', 'atualizando…');
 
     const jobs = [];
@@ -583,8 +621,16 @@
       const job = jobs[i];
       if (r.status === 'fulfilled') {
         successes += 1;
-        if (job.type === 'president') renderPresident(r.value);
-        else renderOffice(job.uf, job.office, r.value);
+
+        const key = jobKey(job);
+        const signature = resultSignature(r.value);
+        const changed = state.resultSignatures.get(key) !== signature;
+
+        if (changed) {
+          state.resultSignatures.set(key, signature);
+          if (job.type === 'president') renderPresident(r.value);
+          else renderOffice(job.uf, job.office, r.value);
+        }
       } else {
         failures += 1;
         console.warn('Falha de atualização', job, r.reason);
@@ -602,6 +648,7 @@
 
     const now = new Date();
     state.lastPollAt = now.getTime();
+    state.refreshing = false;
     updateReadAge();
     els.footerStatus.textContent = `${successes}/9 arquivos lidos • consulta ${now.toLocaleTimeString('pt-BR')}`;
 
@@ -611,8 +658,6 @@
     } else {
       setConnection('error', 'TSE indisponível');
     }
-
-    state.refreshing = false;
   }
 
   async function init() {
