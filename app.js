@@ -7,6 +7,7 @@
   const REQUEST_TIMEOUT_MS = 8_000;
   const DEPLOY_WATCH_MS = 15_000;
   const MAP_POLL_MS = 2_000;
+  const SECOND_ROUND_START_MS = Date.parse('2026-10-25T20:00:00Z'); // 17h de Brasília
   const DEFAULT_VISIBLE = 6;
 
   const MAP_UFS = [
@@ -66,6 +67,14 @@
     refreshing: false,
     timer: null,
     firstSuccess: false,
+    currentRound: 1,
+    roundPaused: false,
+    completedJobs: new Set(),
+    presidentRunoffRequired: false,
+    runoffStates: new Set(),
+    secondRoundTimer: null,
+    secondRoundFederalElection: '6258',
+    secondRoundStateElection: '6260',
     lastPollAt: null,
     ageTimer: null,
     deployTimer: null,
@@ -90,6 +99,8 @@
   const els = {
     liveChip: document.querySelector('#liveChip'),
     liveText: document.querySelector('#liveText'),
+    roundEyebrow: document.querySelector('#roundEyebrow'),
+    updateCadence: document.querySelector('#updateCadence'),
     tseDataTime: document.querySelector('#tseDataTime'),
     lastRead: document.querySelector('#lastRead'),
     presidentFaceoff: document.querySelector('#presidentFaceoff'),
@@ -758,7 +769,8 @@
   }
 
   async function refreshPresidentialMap() {
-    if (!state.mapGeo || document.hidden) return;
+    if (!state.mapGeo || document.hidden || state.roundPaused) return;
+    if (state.currentRound === 2 && !state.presidentRunoffRequired) return;
 
     const requests = MAP_UFS.map(uf =>
       fetchJson(resultUrl(uf, 1, state.federalElection))
@@ -820,7 +832,9 @@
     return {
       cycle: pleito.c || 'ele2026',
       federalElection: String(federal.cd),
-      stateElection: String(estadual.cd)
+      stateElection: String(estadual.cd),
+      secondRoundFederalElection: String(federal.cdt2 || '6258'),
+      secondRoundStateElection: String(estadual.cdt2 || '6260')
     };
   }
 
@@ -881,6 +895,183 @@
     return normalizePercent(data?.s?.pst ?? data?.pst);
   }
 
+  function resultJobKey(job) {
+    const round = state.currentRound;
+    return job.type === 'president'
+      ? `r${round}:br-presidente`
+      : `r${round}:${job.uf}-${job.office.key}`;
+  }
+
+  function currentPresidentJobKey() {
+    return `r${state.currentRound}:br-presidente`;
+  }
+
+  function currentRoundJobs() {
+    const jobs = [];
+
+    if (state.currentRound === 1) {
+      jobs.push({ type: 'president', uf: 'br', cargoCode: 1, electionCode: state.federalElection });
+
+      for (const uf of ['sc', 'pr']) {
+        for (const office of OFFICES) {
+          jobs.push({ uf, office, cargoCode: office.code, electionCode: state.stateElection });
+        }
+      }
+
+      return jobs;
+    }
+
+    if (state.presidentRunoffRequired) {
+      jobs.push({ type: 'president', uf: 'br', cargoCode: 1, electionCode: state.federalElection });
+    }
+
+    for (const uf of ['sc', 'pr']) {
+      if (!state.runoffStates.has(uf)) continue;
+      const governor = OFFICES.find(o => o.code === 3);
+      jobs.push({ uf, office: governor, cargoCode: 3, electionCode: state.stateElection });
+    }
+
+    return jobs;
+  }
+
+  function pendingRoundJobs() {
+    return currentRoundJobs().filter(job => !state.completedJobs.has(resultJobKey(job)));
+  }
+
+  function stopHighFrequencyPolling() {
+    if (state.timer) clearInterval(state.timer);
+    if (state.mapTimer) clearInterval(state.mapTimer);
+    state.timer = null;
+    state.mapTimer = null;
+  }
+
+  function startHighFrequencyPolling() {
+    if (state.roundPaused || document.hidden) return;
+    if (!state.timer) state.timer = setInterval(refreshAll, POLL_MS);
+
+    const shouldPollMap =
+      state.currentRound === 1 ||
+      (state.currentRound === 2 && state.presidentRunoffRequired);
+
+    if (shouldPollMap && !state.mapTimer) {
+      state.mapTimer = setInterval(refreshPresidentialMap, MAP_POLL_MS);
+    }
+  }
+
+  function markFinalizedJob(job, data) {
+    const progress = totalizationPercent(data);
+    if (progress === null || progress < 100) return;
+
+    state.completedJobs.add(resultJobKey(job));
+
+    if (state.currentRound !== 1) return;
+
+    if (job.type === 'president') {
+      state.presidentRunoffRequired = executiveSituation(data).type === 'runoff';
+      return;
+    }
+
+    if (job.office?.code === 3) {
+      if (executiveSituation(data).type === 'runoff') state.runoffStates.add(job.uf);
+      else state.runoffStates.delete(job.uf);
+    }
+  }
+
+  function updateRoundUi() {
+    if (state.currentRound === 2) {
+      if (els.roundEyebrow) els.roundEyebrow.textContent = 'APURAÇÃO OFICIAL • 2º TURNO';
+      if (els.updateCadence) els.updateCadence.textContent = 'automática • 1s';
+      return;
+    }
+
+    if (els.roundEyebrow) els.roundEyebrow.textContent = 'APURAÇÃO OFICIAL • 1º TURNO';
+    if (els.updateCadence) {
+      els.updateCadence.textContent = state.roundPaused
+        ? 'pausada • aguarda 2º turno'
+        : 'automática • 1s';
+    }
+  }
+
+  function scheduleSecondRound() {
+    if (state.currentRound !== 1 || !state.roundPaused) return;
+    if (state.secondRoundTimer) clearTimeout(state.secondRoundTimer);
+
+    const delay = Math.max(0, SECOND_ROUND_START_MS - Date.now());
+
+    state.secondRoundTimer = setTimeout(() => {
+      state.secondRoundTimer = null;
+      activateSecondRound();
+    }, Math.min(delay, 2_147_000_000));
+  }
+
+  async function activateSecondRound() {
+    if (state.currentRound === 2) return;
+    if (Date.now() < SECOND_ROUND_START_MS) {
+      scheduleSecondRound();
+      return;
+    }
+
+    state.currentRound = 2;
+    state.roundPaused = false;
+    state.federalElection = state.secondRoundFederalElection;
+    state.stateElection = state.secondRoundStateElection;
+    state.resultSignatures.clear();
+    state.mapSignatures.clear();
+    state.mapData.clear();
+    state.firstSuccess = false;
+    updateRoundUi();
+
+    setConnection('', '2º turno • conectando');
+    els.footerStatus.textContent = '2º turno • iniciando atualização oficial';
+
+    await refreshAll();
+    if (state.presidentRunoffRequired) await refreshPresidentialMap();
+    startHighFrequencyPolling();
+  }
+
+  function pauseBetweenRounds() {
+    if (state.currentRound !== 1 || state.roundPaused) return;
+
+    state.roundPaused = true;
+    stopHighFrequencyPolling();
+    updateRoundUi();
+
+    setConnection('ok', '1º turno finalizado');
+    els.footerStatus.textContent = state.presidentRunoffRequired || state.runoffStates.size
+      ? '100% totalizado • consultas pausadas até o 2º turno'
+      : '100% totalizado • apuração encerrada';
+
+    updateReadAge();
+
+    if (state.presidentRunoffRequired || state.runoffStates.size) {
+      scheduleSecondRound();
+    }
+  }
+
+  function maybePauseCompletedRound() {
+    const jobs = currentRoundJobs();
+    if (!jobs.length) {
+      if (state.currentRound === 2) {
+        state.roundPaused = true;
+        stopHighFrequencyPolling();
+      }
+      return;
+    }
+
+    const allDone = jobs.every(job => state.completedJobs.has(resultJobKey(job)));
+    if (!allDone) return;
+
+    if (state.currentRound === 1) {
+      pauseBetweenRounds();
+    } else {
+      state.roundPaused = true;
+      stopHighFrequencyPolling();
+      updateRoundUi();
+      setConnection('ok', '2º turno finalizado');
+      els.footerStatus.textContent = '100% totalizado • 2º turno finalizado';
+    }
+  }
+
   function resultSignature(data) {
     const candidates = candidateArray(data);
     const candidateState = candidates.map(c => [
@@ -901,12 +1092,6 @@
       data?.s?.psn ?? '',
       candidateState
     ].join('::');
-  }
-
-  function jobKey(job) {
-    return job.type === 'president'
-      ? 'br-presidente'
-      : `${job.uf}-${job.office.key}`;
   }
 
   function candidateSort(a, b) {
@@ -1152,6 +1337,13 @@
   }
 
   function updateReadAge() {
+    if (state.roundPaused) {
+      els.lastRead.textContent = state.currentRound === 1
+        ? 'pausada até o 2º turno'
+        : 'apuração finalizada';
+      return;
+    }
+
     if (state.refreshing) {
       els.lastRead.textContent = 'verificando…';
       return;
@@ -1303,18 +1495,22 @@
   }
 
   async function refreshAll({ manual = false } = {}) {
-    if (state.refreshing) return;
+    if (state.refreshing || state.roundPaused) return;
+
+    const pending = pendingRoundJobs();
+    if (!pending.length) {
+      maybePauseCompletedRound();
+      return;
+    }
+
     state.refreshing = true;
     updateReadAge();
     if (manual) setConnection('', 'atualizando…');
 
-    const jobs = [];
-    jobs.push({ type: 'president', promise: fetchJson(resultUrl('br', 1, state.federalElection)) });
-    for (const uf of ['sc', 'pr']) {
-      for (const office of OFFICES) {
-        jobs.push({ uf, office, promise: fetchJson(resultUrl(uf, office.code, state.stateElection)) });
-      }
-    }
+    const jobs = pending.map(job => ({
+      ...job,
+      promise: fetchJson(resultUrl(job.uf, job.cargoCode, job.electionCode))
+    }));
 
     const results = await Promise.allSettled(jobs.map(j => j.promise));
     let successes = 0;
@@ -1322,10 +1518,11 @@
 
     results.forEach((r, i) => {
       const job = jobs[i];
+
       if (r.status === 'fulfilled') {
         successes += 1;
 
-        const key = jobKey(job);
+        const key = resultJobKey(job);
         const signature = resultSignature(r.value);
         const changed = state.resultSignatures.get(key) !== signature;
 
@@ -1334,9 +1531,12 @@
           if (job.type === 'president') renderPresident(r.value);
           else renderOffice(job.uf, job.office, r.value);
         }
+
+        markFinalizedJob(job, r.value);
       } else {
         failures += 1;
         console.warn('Falha de atualização', job, r.reason);
+
         if (job.type === 'president') {
           if (!state.firstSuccess) {
             els.presidentFaceoff.innerHTML = '<div class="error-box">Não foi possível ler o resultado presidencial agora. Tentaremos novamente automaticamente.</div>';
@@ -1353,38 +1553,60 @@
     state.lastPollAt = now.getTime();
     state.refreshing = false;
     updateReadAge();
-    els.footerStatus.textContent = `${successes}/9 arquivos lidos • consulta ${now.toLocaleTimeString('pt-BR')}`;
+
+    const activeTotal = currentRoundJobs().length;
+    const doneTotal = currentRoundJobs().filter(job => state.completedJobs.has(resultJobKey(job))).length;
+    const roundLabel = state.currentRound === 1 ? '1º turno' : '2º turno';
+
+    els.footerStatus.textContent =
+      `${roundLabel} • ${doneTotal}/${activeTotal} resultados em 100% • consulta ${now.toLocaleTimeString('pt-BR')}`;
 
     if (successes > 0) {
       state.firstSuccess = true;
-      setConnection(failures ? '' : 'ok', failures ? `${successes}/9 arquivos online` : 'ao vivo • TSE');
+      setConnection(
+        failures ? '' : 'ok',
+        failures ? `${successes}/${jobs.length} arquivos online` : 'ao vivo • TSE'
+      );
     } else {
       setConnection('error', 'TSE indisponível');
     }
+
+    maybePauseCompletedRound();
   }
 
   async function init() {
     mountOfficeCards();
     await loadConfig();
     await initPresidentialMap();
-    await Promise.all([refreshAll(), refreshPresidentialMap()]);
+
+    await refreshAll();
+    if (!state.roundPaused) await refreshPresidentialMap();
+
     restoreScrollAfterDeployment();
     await watchDeployment();
-    state.timer = setInterval(refreshAll, POLL_MS);
+
     state.ageTimer = setInterval(updateReadAge, 250);
     state.deployTimer = setInterval(watchDeployment, DEPLOY_WATCH_MS);
-    state.mapTimer = setInterval(refreshPresidentialMap, MAP_POLL_MS);
+    startHighFrequencyPolling();
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        clearInterval(state.timer);
-        state.timer = null;
-      } else {
-        refreshAll();
-        refreshPresidentialMap();
-        watchDeployment();
-        if (!state.timer) state.timer = setInterval(refreshAll, POLL_MS);
+        stopHighFrequencyPolling();
+        return;
       }
+
+      watchDeployment();
+
+      if (state.roundPaused) {
+        if (state.currentRound === 1 && Date.now() >= SECOND_ROUND_START_MS) {
+          activateSecondRound();
+        }
+        return;
+      }
+
+      refreshAll();
+      refreshPresidentialMap();
+      startHighFrequencyPolling();
     });
   }
 
