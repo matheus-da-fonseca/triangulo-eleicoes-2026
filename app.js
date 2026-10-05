@@ -768,8 +768,8 @@
     }
   }
 
-  async function refreshPresidentialMap() {
-    if (!state.mapGeo || document.hidden || state.roundPaused) return;
+  async function refreshPresidentialMap({ force = false } = {}) {
+    if (!state.mapGeo || document.hidden || (state.roundPaused && !force)) return;
     if (state.currentRound === 2 && !state.presidentRunoffRequired) return;
 
     const requests = MAP_UFS.map(uf =>
@@ -980,7 +980,11 @@
   function updateRoundUi() {
     if (state.currentRound === 2) {
       if (els.roundEyebrow) els.roundEyebrow.textContent = 'APURAÇÃO OFICIAL • 2º TURNO';
-      if (els.updateCadence) els.updateCadence.textContent = 'automática • 1s';
+      if (els.updateCadence) {
+        els.updateCadence.textContent = state.roundPaused
+          ? 'finalizada • 100%'
+          : 'automática • 1s';
+      }
       return;
     }
 
@@ -1580,7 +1584,7 @@
     await initPresidentialMap();
 
     await refreshAll();
-    if (!state.roundPaused) await refreshPresidentialMap();
+    await refreshPresidentialMap({ force: true });
 
     restoreScrollAfterDeployment();
     await watchDeployment();
