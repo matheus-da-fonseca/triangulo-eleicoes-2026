@@ -1369,6 +1369,16 @@
   }
 
   function updateReadAge() {
+    if (window.__RUNOFF_STARTED__) {
+      const last = window.__RUNOFF_LAST_AT__;
+      if (!last) {
+        els.lastRead.textContent = 'aguardando TSE';
+      } else {
+        const seconds = Math.floor(Math.max(0, Date.now() - last) / 1000);
+        els.lastRead.textContent = seconds < 2 ? 'agora' : seconds < 60 ? seconds + 's atrás' : Math.floor(seconds / 60) + 'min atrás';
+      }
+      return;
+    }
     if (state.roundPaused) {
       els.lastRead.textContent = state.currentRound === 1
         ? '1º turno finalizado'
@@ -1424,7 +1434,7 @@
       els.presidentRanking.parentElement.hidden = true;
     }
 
-    els.tseDataTime.textContent = totalizationTimestamp(data);
+    if (!window.__RUNOFF_NATIONAL__) els.tseDataTime.textContent = totalizationTimestamp(data);
     setSituation(els.presSituation, executiveSituation(data));
     updateMapVisuals();
 
@@ -1616,9 +1626,18 @@
   async function init() {
     window.addEventListener('runoffDataUpdated', () => {
       state.mapDataRunoff = new Map(Object.entries(window.__RUNOFF_UFS__ || {}));
+      if (window.__RUNOFF_NATIONAL__) {
+        els.tseDataTime.textContent = totalizationTimestamp(window.__RUNOFF_NATIONAL__);
+        if (els.updateCadence) {
+          els.updateCadence.textContent = totalizationPercent(window.__RUNOFF_NATIONAL__) >= 100
+            ? '2º turno finalizado'
+            : '2º turno • automática 1s';
+        }
+      }
       if (state.mapYear === '2026r2') updateMapVisuals();
     });
     window.addEventListener('runoffStarted', () => {
+      if (els.updateCadence) els.updateCadence.textContent = '2º turno • automática 1s';
       if (state.mapYear === '2026') setMapYear('2026r2');
     });
     mountOfficeCards();

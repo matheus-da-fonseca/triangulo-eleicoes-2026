@@ -59,6 +59,7 @@
    $('runoffExplanation').textContent='Resultados oficiais do 2º turno. Compare a liderança de cada UF com o 1º turno pelo mapa.';
    state.finished=progress(d)>=100;
    window.__RUNOFF_NATIONAL__=d;
+   window.__RUNOFF_LAST_AT__=Date.now();
    window.dispatchEvent(new Event('runoffDataUpdated'));
  }
  async function fetchNational(){
@@ -110,6 +111,7 @@
  function start(){
    if(state.running||document.hidden||state.finished&&state.complete.size===27)return;
    state.running=true;
+   window.__RUNOFF_STARTED__=true;
    window.dispatchEvent(new Event('runoffStarted'));
    $('runoffStatus').textContent='Aguardando publicação dos resultados';
    fetchNational();fetchMap();
