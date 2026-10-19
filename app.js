@@ -84,6 +84,7 @@
     mapYear: '2026',
     mapGeo: null,
     mapData: new Map(),
+    mapDataRunoff: new Map(),
     mapData2022: new Map(),
     mapSignatures: new Map(),
     map2022Loaded: true,
@@ -236,7 +237,7 @@
   }
 
   async function deploymentSignature() {
-    const paths = ['./index.html', './app.js', './styles.css'];
+    const paths = ['./index.html', './app.js', './runoff.js', './styles.css'];
     const fingerprints = await Promise.all(paths.map(assetFingerprint));
     return fingerprints.join('::');
   }
@@ -410,7 +411,9 @@
   }
 
   function activeMapData() {
-    return state.mapYear === '2022' ? state.mapData2022 : state.mapData;
+    if (state.mapYear === '2022') return state.mapData2022;
+    if (state.mapYear === '2026r2') return state.mapDataRunoff;
+    return state.mapData;
   }
 
   function activeMapSummary(uf) {
@@ -443,6 +446,18 @@
   function updateMapNationalProgress() {
     if (!els.mapNationalProgressLabel || !els.mapNationalProgressText || !els.mapNationalProgressBar) return;
 
+    if (state.mapYear === '2026r2') {
+      const live = window.__RUNOFF_NATIONAL__;
+      const p = live ? totalizationPercent(live) : null;
+      els.mapNationalProgressLabel.textContent = 'Apuração nacional • 2º turno 2026';
+      els.mapNationalProgressText.textContent = formatPercent(p);
+      els.mapNationalProgressBar.style.width = `${Math.max(0,Math.min(100,p||0))}%`;
+      if (els.mapNationalCounts) els.mapNationalCounts.hidden = !live;
+      if (els.mapRemainingNote) els.mapRemainingNote.hidden = !live;
+      if (live) updateNationalElectorateStats(live);
+      return;
+    }
+
     if (state.mapYear === '2022') {
       els.mapNationalProgressLabel.textContent = 'Mapa final por UF • 2022';
       els.mapNationalProgressText.textContent = '2º turno';
@@ -454,6 +469,7 @@
 
     if (els.mapNationalCounts) els.mapNationalCounts.hidden = false;
     if (els.mapRemainingNote) els.mapRemainingNote.hidden = false;
+    if (window.__FIRST_ROUND_NATIONAL__) updateNationalElectorateStats(window.__FIRST_ROUND_NATIONAL__);
 
     const progress = Math.max(0, Math.min(100, state.nationalProgress2026 || 0));
     els.mapNationalProgressLabel.textContent = 'Apuração nacional • 2026';
@@ -463,6 +479,12 @@
 
   function updateMapStatus() {
     if (!els.mapStatus) return;
+    if (state.mapYear === '2026r2') {
+      els.mapStatus.textContent = window.__RUNOFF_NATIONAL__
+        ? '2º turno • resultados do TSE' : '2º turno • aguardando 25/10 às 17h (Brasília)';
+      if (els.mapSource) els.mapSource.textContent = 'Malha geográfica: IBGE • resultados do TSE • 2º turno';
+      return;
+    }
 
     if (state.mapYear === '2022') {
       els.mapStatus.textContent = 'Comparativo visual de 2022 • vencedor por UF';
@@ -511,6 +533,7 @@
 
     const leaderName = summary.leader ? candidateDisplayName(summary.leader) : '—';
     const historical = state.mapYear === '2022';
+    const isRunoff = state.mapYear === '2026r2';
 
     if (historical) {
       return `
@@ -524,11 +547,12 @@
 
     const secondName = summary.second ? candidateDisplayName(summary.second) : '—';
     return `
-      <span class="map-detail-kicker">${name.toUpperCase()} • ${uf.toUpperCase()} • 2026 AO VIVO</span>
+      <span class="map-detail-kicker">${name.toUpperCase()} • ${uf.toUpperCase()} • ${isRunoff ? '2º TURNO' : '1º TURNO'}</span>
       <strong>${leaderName}</strong>
       <div class="map-detail-percent">${formatPercent(summary.leader?.pvap)}</div>
       <div class="map-detail-row"><span>2º colocado</span><b>${secondName} • ${formatPercent(summary.second?.pvap)}</b></div>
       <div class="map-detail-row"><span>Diferença</span><b>${summary.diff.toLocaleString('pt-BR')} votos</b></div>
+      ${isRunoff ? `<div class="map-detail-row"><span>Líder no 1º turno</span><b>${state.mapData.get(uf)?.leader ? candidateDisplayName(state.mapData.get(uf).leader) : '—'}</b></div>` : ''}
       <div class="map-detail-stats">
         <div>
           <span>Eleitorado da UF</span>
@@ -619,8 +643,8 @@
     els.mapLegend.replaceChildren();
     const title = document.createElement('span');
     title.className = 'legend-title';
-    title.textContent = state.mapYear === '2022'
-      ? 'Resultado final de 2022 • vencedor por UF'
+    title.textContent = state.mapYear === '2026r2'
+      ? 'Liderança por UF • 2º turno'
       : 'Cor = candidato que lidera na UF';
     els.mapLegend.appendChild(title);
 
@@ -647,7 +671,7 @@
 
       const pct = label.querySelector('.map-label-progress');
       if (pct) {
-        const showProgress = state.mapYear === '2026' && state.mapMode === 'progress';
+        const showProgress = state.mapYear !== '2022' && state.mapMode === 'progress';
         pct.textContent = showProgress
           ? (summary ? `${Math.round(summary.progress)}%` : '—')
           : '';
@@ -669,7 +693,7 @@
   }
 
   function setMapYear(year) {
-    state.mapYear = year === '2022' ? '2022' : '2026';
+    state.mapYear = ['2022','2026','2026r2'].includes(year) ? year : '2026';
 
     document.querySelectorAll('.map-year').forEach(button => {
       button.classList.toggle('active', button.dataset.mapYear === state.mapYear);
@@ -793,7 +817,13 @@
       changed = true;
     });
 
-    if (changed) updateMapVisuals();
+    if (changed) {
+      window.__FIRST_ROUND_UFS__ = Object.fromEntries([...state.mapData].map(([uf, summary]) => [
+        uf, {leader:summary?.leader ? candidateDisplayName(summary.leader) : ''}
+      ]));
+      window.dispatchEvent(new Event('firstRoundMapUpdated'));
+      updateMapVisuals();
+    }
 
     const now = new Date();
     state.mapLastUpdatedAt = now.getTime();
@@ -988,11 +1018,11 @@
       return;
     }
 
-    if (els.roundEyebrow) els.roundEyebrow.textContent = 'APURAÇÃO OFICIAL • 1º TURNO';
+    if (els.roundEyebrow) els.roundEyebrow.textContent = 'ELEIÇÕES 2026 • 2º TURNO PRESIDENCIAL';
     if (els.updateCadence) {
       els.updateCadence.textContent = state.roundPaused
-        ? 'pausada • aguarda 2º turno'
-        : 'automática • 1s';
+        ? '1º turno finalizado'
+        : 'carregando histórico do 1º turno';
     }
   }
 
@@ -1047,9 +1077,7 @@
 
     updateReadAge();
 
-    if (state.presidentRunoffRequired || state.runoffStates.size) {
-      scheduleSecondRound();
-    }
+    // O 2º turno é carregado por runoff.js. Este painel mantém o 1º turno intacto.
   }
 
   function maybePauseCompletedRound() {
@@ -1343,7 +1371,7 @@
   function updateReadAge() {
     if (state.roundPaused) {
       els.lastRead.textContent = state.currentRound === 1
-        ? 'pausada até o 2º turno'
+        ? '1º turno finalizado'
         : 'apuração finalizada';
       return;
     }
@@ -1373,6 +1401,13 @@
   function renderPresident(data) {
     const candidates = candidateArray(data).sort(candidateSort);
     state.nationalCandidates = candidates;
+    window.__FIRST_ROUND_NATIONAL__ = data;
+    window.__FIRST_ROUND_PRESIDENT__ = candidates.map(c => ({
+      name:candidateDisplayName(c),votes:voteNumber(c.vap),
+      pct:normalizePercent(c.pvap),photo:photoUrl(c,'br',state.federalElection),
+      vice:vicePresidentName(c)
+    }));
+    window.dispatchEvent(new Event('firstRoundDataReady'));
     renderFaceoff(candidates);
 
     const rest = candidates.slice(2);
@@ -1579,6 +1614,13 @@
   }
 
   async function init() {
+    window.addEventListener('runoffDataUpdated', () => {
+      state.mapDataRunoff = new Map(Object.entries(window.__RUNOFF_UFS__ || {}));
+      if (state.mapYear === '2026r2') updateMapVisuals();
+    });
+    window.addEventListener('runoffStarted', () => {
+      if (state.mapYear === '2026') setMapYear('2026r2');
+    });
     mountOfficeCards();
     await loadConfig();
     await initPresidentialMap();
@@ -1601,12 +1643,7 @@
 
       watchDeployment();
 
-      if (state.roundPaused) {
-        if (state.currentRound === 1 && Date.now() >= SECOND_ROUND_START_MS) {
-          activateSecondRound();
-        }
-        return;
-      }
+      if (state.roundPaused) return;
 
       refreshAll();
       refreshPresidentialMap();

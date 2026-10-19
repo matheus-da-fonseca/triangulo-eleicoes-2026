@@ -61,36 +61,45 @@
       </div>
     </section>
 
-    <section class="presidency glass section-card" aria-labelledby="pres-title">
-      <div class="section-head">
-        <div>
-          <p class="kicker">BRASIL • 1 VAGA NACIONAL</p>
-          <h2 id="pres-title">Presidência da República</h2>
-        </div>
-        <div class="progress-wrap" id="presProgressWrap">
-          <div class="progress-meta">
-            <span>Seções totalizadas</span>
-            <strong id="presProgressText">—</strong>
-          </div>
-          <div class="progress-track"><span id="presProgressBar"></span></div>
-        </div>
+    <section class="runoff glass section-card" id="secondRound">
+      <div class="runoff-head">
+        <div><p class="kicker">2º TURNO • 25 DE OUTUBRO</p><h2>Presidência: o duelo final</h2>
+          <p>Flávio Bolsonaro × Lula. Nova apuração sem perder o histórico do primeiro turno.</p></div>
+        <div class="runoff-clock"><span>Próxima apuração</span><strong id="runoffCountdown">25/10 • 17h</strong><small id="runoffStatus">Aguardando segundo turno</small></div>
       </div>
-      <div id="presSituation" class="election-situation status-waiting">Aguardando totalização</div>
-      <div id="presidentFaceoff" class="president-faceoff" aria-live="polite">
-        <div class="skeleton-card faceoff-skeleton"></div>
-        <div class="skeleton-card faceoff-skeleton"></div>
+      <div class="runoff-faceoff">
+        <article class="runoff-card" data-runoff="flavio">
+          <div class="runoff-profile"><div class="runoff-avatar"><span>FB</span><img alt="Foto oficial de Flávio Bolsonaro" hidden></div>
+            <div><small>PL • Nº 22</small><h3>Flávio Bolsonaro</h3><span class="runoff-vice"></span></div></div>
+          <div class="runoff-percentage">—</div><div class="runoff-votes">Aguardando apuração</div>
+          <div class="runoff-baseline">1º turno: <b>Aguardando arquivo…</b></div>
+        </article>
+        <div class="runoff-vs">VS</div>
+        <article class="runoff-card" data-runoff="lula">
+          <div class="runoff-profile"><div class="runoff-avatar"><span>LU</span><img alt="Foto oficial de Lula" hidden></div>
+            <div><small>PT • Nº 13</small><h3>Lula</h3><span class="runoff-vice"></span></div></div>
+          <div class="runoff-percentage">—</div><div class="runoff-votes">Aguardando apuração</div>
+          <div class="runoff-baseline">1º turno: <b>Aguardando arquivo…</b></div>
+        </article>
       </div>
-
+      <div class="runoff-numbers">
+        <div><span>Seções totalizadas • 2º turno</span><strong id="runoffProgress">—</strong></div>
+        <div><span>Diferença em votos</span><strong id="runoffDiff">—</strong></div>
+        <div><span>UFs que trocaram de líder entre turnos</span><strong id="runoffFlips">—</strong></div>
+      </div>
+      <div class="runoff-bar"><span id="runoffBar"></span></div>
+      <p class="runoff-explanation" id="runoffExplanation">Números do 2º turno ainda não disponíveis. Os dados do 1º turno permanecem separados no arquivo abaixo.</p>
       <section class="pres-map" aria-labelledby="pres-map-title">
         <div class="pres-map-head">
           <div>
             <p class="kicker">BRASIL POR UF</p>
-            <h3 id="pres-map-title">Mapa da Presidência</h3>
-            <p>Veja quem lidera e o avanço da totalização em cada estado.</p>
+            <h3 id="pres-map-title">Mapa da disputa • Brasil</h3>
+            <p>Compare a liderança de cada UF entre o 1º e o 2º turno.</p>
           </div>
           <div class="map-controls">
             <div class="map-years" role="group" aria-label="Eleição exibida no mapa">
-              <button class="map-year active" type="button" data-map-year="2026">2026 ao vivo</button>
+              <button class="map-year" type="button" data-map-year="2026r2">2º turno 2026</button>
+              <button class="map-year active" type="button" data-map-year="2026">1º turno 2026</button>
               <button class="map-year" type="button" data-map-year="2022">2022 final</button>
             </div>
             <div class="map-modes" role="group" aria-label="Modo do mapa">
@@ -146,6 +155,32 @@
           <span id="mapSource">Malha geográfica: IBGE • dados eleitorais: TSE</span>
         </div>
       </section>
+    </section>
+    <div class="round-archive-heading" id="firstRound">
+      <div><p class="kicker">ARQUIVO • 4 DE OUTUBRO DE 2026</p><h2>Resultados finalizados do 1º turno</h2>
+      <p>Presidência, Santa Catarina e Paraná continuam disponíveis para consulta.</p></div>
+      <span class="round-archive-pill">Governadores de SC e PR definidos</span>
+    </div>
+
+    <section class="presidency glass section-card" aria-labelledby="pres-title">
+      <div class="section-head">
+        <div>
+          <p class="kicker">BRASIL • 1 VAGA NACIONAL</p>
+          <h2 id="pres-title">Presidência • 1º turno</h2>
+        </div>
+        <div class="progress-wrap" id="presProgressWrap">
+          <div class="progress-meta">
+            <span>Seções totalizadas</span>
+            <strong id="presProgressText">—</strong>
+          </div>
+          <div class="progress-track"><span id="presProgressBar"></span></div>
+        </div>
+      </div>
+      <div id="presSituation" class="election-situation status-waiting">Aguardando totalização</div>
+      <div id="presidentFaceoff" class="president-faceoff" aria-live="polite">
+        <div class="skeleton-card faceoff-skeleton"></div>
+        <div class="skeleton-card faceoff-skeleton"></div>
+      </div>
 
       <div class="president-ranking-wrap">
         <div class="president-ranking-head">
@@ -220,6 +255,10 @@
       script.src = `./app.js?d=${encodeURIComponent(window.__APP_CACHE_BUST__ || Date.now())}`;
       script.async = false;
       document.body.appendChild(script);
+      const runoff = document.createElement('script');
+      runoff.src = `./runoff.js?d=${encodeURIComponent(window.__APP_CACHE_BUST__ || Date.now())}`;
+      runoff.async = false;
+      document.body.appendChild(runoff);
     })();
   </script>
 </body>
